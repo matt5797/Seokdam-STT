@@ -1,0 +1,114 @@
+{
+  "summary": {
+    "total_segments": 10,
+    "avg_stt_confidence": 0.9563,
+    "avg_translation_latency_ms": 1303.3,
+    "min_translation_latency_ms": 1173.2,
+    "max_translation_latency_ms": 1463.3,
+    "total_elapsed_sec": 91.8,
+    "translation_errors": 0,
+    "gemini_model": "gemini-2.0-flash"
+  },
+  "segments": [
+    {
+      "index": 1,
+      "start_sec": 0.401,
+      "end_sec": 4.954,
+      "confidence": 0.9675,
+      "ko": "78세가 되던 해 하루아침에 담배를 끊었습니다.",
+      "en": "I quit smoking cold turkey at 78.",
+      "translation_latency_ms": 1283.5,
+      "error": null
+    },
+    {
+      "index": 2,
+      "start_sec": 4.954,
+      "end_sec": 18.434,
+      "confidence": 0.9107,
+      "ko": " 그렇게 된 까닭이 뭐냐 하면 같은 마을에 사시는 7흔아홉 되시는 제이슨이라고 하는 할아버지를 사랑하게 된 겁니다.",
+      "en": "The reason is that she fell in love with a 79-year-old grandfather named Jason in the same village.",
+      "translation_latency_ms": 1375.0,
+      "error": null
+    },
+    {
+      "index": 3,
+      "start_sec": 18.434,
+      "end_sec": 26.514,
+      "confidence": 0.9613,
+      "ko": " 78세가 되신 엘리나와 또 79세인 제이슨이 사랑에 빠진 거예요.",
+      "en": "Elina, 78, and Jason, 79, fell in love.",
+      "translation_latency_ms": 1371.3,
+      "error": null
+    },
+    {
+      "index": 4,
+      "start_sec": 26.514,
+      "end_sec": 46.447,
+      "confidence": 0.9251,
+      "ko": " 그래서 두 사람이 결혼을 하고 싶은데 이 할아버지 제이슨이 엘리나에게 당신을 너무나 사랑하고 좋고 또 결혼을 하고 싶지만 당신이 담배를 피는 것 때문에 마음에 꺼려진다는 거 담배를 피우지 않는 ",
+      "en": "So, they want to marry, but Jason told Elena that he loves her and wants to marry her, but he's hesitant because she smokes.",
+      "translation_latency_ms": 1463.3,
+      "error": null
+    },
+    {
+      "index": 5,
+      "start_sec": 46.447,
+      "end_sec": 51.307,
+      "confidence": 0.9551,
+      "ko": "사람이 담배를 피우는 사람과 함께 지내는 것은 대단히 고통스러운 일이기도 하죠.",
+      "en": "Living with someone who smokes can be very painful.",
+      "translation_latency_ms": 1276.5,
+      "error": null
+    },
+    {
+      "index": 6,
+      "start_sec": 51.307,
+      "end_sec": 59.327,
+      "confidence": 0.924,
+      "ko": " 그때 이 엘리나가 너무나 흔쾌히 그러시냐고 그러면 제가 담배를 끊지요.",
+      "en": "Then Elina readily said if that's the case, I'll quit smoking.",
+      "translation_latency_ms": 1179.0,
+      "error": null
+    },
+    {
+      "index": 7,
+      "start_sec": 59.327,
+      "end_sec": 61.754,
+      "confidence": 0.9629,
+      "ko": " 그리고 그날로 담배를 끊은 겁니다.",
+      "en": "And he quit smoking that very day.",
+      "translation_latency_ms": 1276.6,
+      "error": null
+    },
+    {
+      "index": 8,
+      "start_sec": 61.754,
+      "end_sec": 68.854,
+      "confidence": 0.9839,
+      "ko": " 50년 동안 그렇게 담배를 끊으려고 애를 썼다가 안 되던 일이 하루아침에 된 거예요.",
+      "en": "After 50 years of trying to quit smoking, it happened overnight.",
+      "translation_latency_ms": 1270.2,
+      "error": null
+    },
+    {
+      "index": 9,
+      "start_sec": 68.854,
+      "end_sec": 79.24,
+      "confidence": 0.9802,
+      "ko": " 그가 신문 기자와 인터뷰를 하면서 그 인터뷰 마지막에 그런 말을 남겼습니다.",
+      "en": "In a newspaper interview, he concluded with these words.",
+      "translation_latency_ms": 1364.8,
+      "error": null
+    },
+    {
+      "index": 10,
+      "start_sec": 79.24,
+      "end_sec": 86.894,
+      "confidence": 0.9921,
+      "ko": " 사랑의 힘이 의지의 힘보다 훨씬 강력하다고 그런 말을 남겼습니다.",
+      "en": "Someone said the power of love is much stronger than the power of will.",
+      "translation_latency_ms": 1173.2,
+      "error": null
+    }
+  ]
+}

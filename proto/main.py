@@ -634,41 +634,76 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>교회 자막 테스트</title>
+<title>석담교회 말씀 이음</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@600;700&display=swap');
+
+  :root {
+    --bg:           #FAF6F0;
+    --bg-warm:      #F4EDE4;
+    --bg-card:      #FFFFFF;
+    --bg-header:    #F0E8DD;
+    --border:       #E0D5C7;
+    --border-light: #EBE3D8;
+
+    --text:         #3D2E1F;
+    --text-light:   #7A6B5B;
+    --text-muted:   #A89882;
+
+    --accent:       #8B2635;   /* 와인/버건디 — 교회 전통색 */
+    --accent-light: #B8455A;
+    --gold:         #B8963E;   /* 금색 포인트 */
+    --gold-soft:    #D4B96A;
+
+    --en-color:     #2E5D8A;   /* 영어 — 차분한 블루 */
+    --ne-color:     #5B7A3A;   /* 네팔어 — 올리브 그린 */
+    --pending:      #C4B8A8;
+
+    --success:      #4A8B3F;
+    --error:        #B8363B;
+    --warning:      #C4922A;
+  }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
     font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0c0c14;
-    color: #e0e0e0;
+    background: var(--bg);
+    color: var(--text);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
   }
 
-  /* ── 헤더 (컨트롤) ── */
+  /* ── 헤더 ── */
   .header {
-    background: #161625;
-    border-bottom: 1px solid #2a2a3e;
-    padding: 16px 24px;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 28px;
+    box-shadow: 0 1px 4px rgba(60, 40, 20, 0.06);
   }
 
   .header h1 {
-    font-size: 18px;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 20px;
     font-weight: 700;
+    color: var(--accent);
     margin-bottom: 14px;
     display: flex;
     align-items: center;
     gap: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .header h1 .cross {
+    color: var(--gold);
+    font-size: 22px;
   }
 
   .controls {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
   }
 
@@ -679,42 +714,45 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }
 
   .control-group label {
-    font-size: 13px;
-    color: #888;
+    font-size: 14px;
+    color: var(--text-light);
     white-space: nowrap;
+    font-weight: 600;
   }
 
   select {
-    background: #0c0c14;
-    color: #e0e0e0;
-    border: 1px solid #3a3a50;
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 13px;
+    padding: 7px 12px;
+    font-size: 14px;
     font-family: inherit;
     cursor: pointer;
     outline: none;
+    transition: border-color 0.2s;
   }
-  select:focus { border-color: #6366f1; }
+  select:focus { border-color: var(--accent); }
 
   .checkbox-group {
     display: flex;
-    gap: 10px;
+    gap: 12px;
   }
 
   .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 13px;
+    gap: 5px;
+    font-size: 14px;
     cursor: pointer;
     user-select: none;
+    color: var(--text);
   }
 
   .checkbox-label input[type="checkbox"] {
-    accent-color: #6366f1;
-    width: 16px;
-    height: 16px;
+    accent-color: var(--accent);
+    width: 18px;
+    height: 18px;
     cursor: pointer;
   }
 
@@ -725,23 +763,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }
 
   .btn {
-    padding: 8px 20px;
+    padding: 9px 24px;
     border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
+    border-radius: 7px;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
     font-family: inherit;
-    transition: opacity 0.2s;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
   }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 
   .btn-start {
-    background: #22c55e;
-    color: #000;
+    background: var(--success);
+    color: #fff;
   }
   .btn-stop {
-    background: #ef4444;
+    background: var(--error);
     color: #fff;
   }
 
@@ -751,89 +791,101 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    padding: 24px;
-    gap: 12px;
-    min-height: 400px;
+    padding: 24px 28px;
+    gap: 14px;
+    min-height: 420px;
   }
 
   .segment {
-    background: #1a1a2e;
+    background: var(--bg-card);
     border-radius: 10px;
-    padding: 16px 20px;
-    border-left: 3px solid #6366f1;
-    animation: fadeIn 0.3s ease;
+    padding: 18px 22px;
+    border-left: 4px solid var(--gold-soft);
+    box-shadow: 0 1px 6px rgba(60, 40, 20, 0.07);
+    animation: fadeIn 0.35s ease;
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
   .seg-ko {
-    font-size: 20px;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 22px;
     font-weight: 700;
-    color: #fff;
-    line-height: 1.5;
-    margin-bottom: 6px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 8px;
   }
 
   .seg-translation {
-    font-size: 17px;
-    line-height: 1.5;
-    margin-top: 4px;
+    font-size: 19px;
+    line-height: 1.55;
+    margin-top: 5px;
+    padding-left: 2px;
   }
 
-  .seg-translation.en { color: #7dd3fc; }
-  .seg-translation.ne { color: #86efac; }
-  .seg-translation.pending { color: #555; font-style: italic; }
+  .seg-translation.en { color: var(--en-color); }
+  .seg-translation.ne { color: var(--ne-color); }
+  .seg-translation.pending { color: var(--pending); font-style: italic; }
 
   .seg-meta {
-    font-size: 11px;
-    color: #555;
-    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-light);
   }
 
   .refined-badge {
-    font-size: 12px;
-    color: #a78bfa;
+    font-size: 13px;
+    color: var(--gold);
     cursor: help;
   }
 
   .empty-state {
     text-align: center;
-    color: #444;
-    font-size: 15px;
+    color: var(--text-muted);
+    font-size: 17px;
     margin: auto;
+    line-height: 1.8;
+  }
+  .empty-state .cross-icon {
+    font-size: 40px;
+    display: block;
+    margin-bottom: 8px;
+    color: var(--gold-soft);
   }
 
   /* ── 상태바 ── */
   .status-bar {
-    background: #161625;
-    border-top: 1px solid #2a2a3e;
-    padding: 8px 24px;
+    background: var(--bg-header);
+    border-top: 1px solid var(--border);
+    padding: 9px 28px;
     display: flex;
-    gap: 20px;
-    font-size: 12px;
-    color: #666;
+    gap: 24px;
+    font-size: 13px;
+    color: var(--text-light);
     align-items: center;
   }
 
   .status-dot {
     display: inline-block;
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    margin-right: 4px;
+    margin-right: 5px;
   }
-  .dot-ready { background: #888; }
-  .dot-connecting { background: #f59e0b; animation: pulse 1s infinite; }
-  .dot-running { background: #22c55e; animation: pulse 1.5s infinite; }
-  .dot-error { background: #ef4444; }
-  .dot-stopped { background: #888; }
+  .dot-ready    { background: var(--text-muted); }
+  .dot-connecting { background: var(--warning); animation: pulse 1s infinite; }
+  .dot-running  { background: var(--success); animation: pulse 1.5s infinite; }
+  .dot-error    { background: var(--error); }
+  .dot-stopped  { background: var(--text-muted); }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+    50% { opacity: 0.3; }
   }
 </style>
 </head>
@@ -841,7 +893,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <!-- 헤더 -->
 <div class="header">
-  <h1>🎙️ 교회 자막 테스트</h1>
+  <h1><span class="cross">✝</span> 석담교회 말씀 이음</h1>
   <div class="controls">
     <div class="control-group">
       <label>마이크:</label>
@@ -865,7 +917,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <!-- 자막 -->
 <div class="subtitle-area" id="subtitleArea">
   <div class="empty-state" id="emptyState">
-    시작 버튼을 눌러 자막 테스트를 시작하세요
+    <span class="cross-icon">✝</span>
+    시작 버튼을 눌러 자막을 시작하세요
   </div>
 </div>
 
@@ -1136,7 +1189,7 @@ function escapeAttr(str) {
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
-app = FastAPI(title="교회 자막 테스트")
+app = FastAPI(title="석담교회 말씀 이음")
 
 # 현재 활성 세션
 active_session: Optional[SubtitleSession] = None
@@ -1249,7 +1302,7 @@ def main():
         sys.exit(0)
 
     print("=" * 50)
-    print("  🎙️ 교회 자막 테스트 프로토타입")
+    print("  ✝ 석담교회 말씀 이음")
     print(f"  서버: {url}")
     print("  종료: Ctrl+C")
     print("=" * 50)

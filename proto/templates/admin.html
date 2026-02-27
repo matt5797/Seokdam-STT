@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>석담교회 말씀 이음 — 관리자</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@600;700&display=swap');
+
+  :root {
+    --bg:           #FAF6F0;
+    --bg-warm:      #F4EDE4;
+    --bg-card:      #FFFFFF;
+    --bg-header:    #F0E8DD;
+    --border:       #E0D5C7;
+    --border-light: #EBE3D8;
+
+    --text:         #3D2E1F;
+    --text-light:   #7A6B5B;
+    --text-muted:   #A89882;
+
+    --accent:       #8B2635;
+    --accent-light: #B8455A;
+    --gold:         #B8963E;
+    --gold-soft:    #D4B96A;
+
+    --en-color:     #2E5D8A;
+    --ne-color:     #5B7A3A;
+    --pending:      #C4B8A8;
+
+    --success:      #4A8B3F;
+    --error:        #B8363B;
+    --warning:      #C4922A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── 헤더 ── */
+  .header {
+    background: var(--bg-header);
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 24px;
+    box-shadow: 0 2px 8px rgba(139, 38, 53, 0.1);
+  }
+
+  .header h1 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .header h1 .cross { color: var(--gold); font-size: 20px; }
+  .admin-badge {
+    font-size: 11px;
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  .viewer-link-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-card);
+    color: var(--text-light);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .viewer-link-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--bg-warm);
+  }
+
+  /* ── 메인 레이아웃 (2컬럼) ── */
+  .main-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── 좌: 제어 패널 ── */
+  .control-panel {
+    width: 60%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+  }
+
+  .panel-header {
+    background: var(--bg-warm);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .controls-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .control-row label {
+    font-size: 14px;
+    color: var(--text-light);
+    font-weight: 600;
+    min-width: 54px;
+  }
+
+  select {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    flex: 1;
+    min-width: 160px;
+  }
+  select:focus { border-color: var(--accent); }
+  select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .checkbox-group {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--text);
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .btn {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 7px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+
+  .btn-start { background: var(--success); color: #fff; }
+  .btn-stop  { background: var(--error);   color: #fff; }
+
+  /* ── 자막 모니터 ── */
+  .subtitle-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 16px 20px;
+    gap: 12px;
+    overflow-y: auto;
+    min-height: 200px;
+  }
+
+  .segment {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 14px 18px;
+    border-left: 4px solid var(--gold-soft);
+    box-shadow: 0 1px 4px rgba(60, 40, 20, 0.06);
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .seg-ko {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 6px;
+  }
+
+  .seg-translation {
+    font-size: 17px;
+    line-height: 1.5;
+    margin-top: 4px;
+    padding-left: 2px;
+  }
+  .seg-translation.en { color: var(--en-color); }
+  .seg-translation.ne { color: var(--ne-color); }
+  .seg-translation.pending { color: var(--pending); font-style: italic; }
+
+  .seg-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    padding-top: 5px;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .refined-badge { font-size: 12px; color: var(--gold); cursor: help; }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 16px;
+    margin: auto;
+    line-height: 1.8;
+  }
+  .empty-state .cross-icon {
+    font-size: 36px;
+    display: block;
+    margin-bottom: 8px;
+    color: var(--gold-soft);
+  }
+
+  /* ── 우: 상태 패널 ── */
+  .status-panel {
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-warm);
+  }
+
+  .stat-grid {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .stat-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.success { color: var(--success); }
+
+  .stat-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* STT 상태 표시기 */
+  .stt-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-ready      { background: var(--text-muted); }
+  .dot-connecting { background: var(--warning); animation: pulse 1s infinite; }
+  .dot-running    { background: var(--success); animation: pulse 1.5s infinite; }
+  .dot-error      { background: var(--error); }
+  .dot-stopped    { background: var(--text-muted); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  /* 뷰어 수 카드 */
+  .viewer-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── 하단 상태바 ── */
+  .status-bar {
+    background: var(--bg-header);
+    border-top: 1px solid var(--border);
+    padding: 8px 20px;
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+    color: var(--text-light);
+    align-items: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="header">
+  <h1>
+    <span class="cross">✝</span>
+    석담교회 말씀 이음
+    <span class="admin-badge">관리자</span>
+  </h1>
+  <a class="viewer-link-btn" href="/" target="_blank" title="뷰어 페이지 열기">
+    📺 뷰어 열기
+  </a>
+</div>
+
+<!-- 메인 2컬럼 레이아웃 -->
+<div class="main-layout">
+
+  <!-- 좌: 제어 패널 + 자막 모니터 -->
+  <div class="control-panel">
+    <div class="panel-header">제어 패널</div>
+
+    <div class="controls-body">
+      <!-- 마이크 -->
+      <div class="control-row">
+        <label>마이크</label>
+        <select id="micSelect"><option value="-1">로딩 중...</option></select>
+      </div>
+
+      <!-- 번역 언어 -->
+      <div class="control-row">
+        <label>번역</label>
+        <div class="checkbox-group" id="langCheckboxes"></div>
+      </div>
+
+      <!-- 모델 -->
+      <div class="control-row">
+        <label>모델</label>
+        <select id="modelSelect"></select>
+      </div>
+
+      <!-- 버튼 -->
+      <div class="btn-row">
+        <button class="btn btn-start" id="btnStart" onclick="startSession()">● 시작</button>
+        <button class="btn btn-stop"  id="btnStop"  onclick="stopSession()" disabled>■ 중지</button>
+      </div>
+    </div>
+
+    <!-- 자막 모니터 -->
+    <div class="panel-header">자막 모니터</div>
+    <div class="subtitle-area" id="subtitleArea">
+      <div class="empty-state" id="emptyState">
+        <span class="cross-icon">✝</span>
+        시작 버튼을 눌러 자막을 시작하세요
+      </div>
+    </div>
+  </div>
+
+  <!-- 우: 상태 패널 -->
+  <div class="status-panel">
+    <div class="panel-header">상태 패널</div>
+
+    <div class="stat-grid">
+
+      <!-- STT 상태 -->
+      <div class="stat-card">
+        <div class="stat-label">STT 상태</div>
+        <div class="stt-indicator">
+          <span class="status-dot dot-ready" id="statusDot"></span>
+          <span id="statusMsg">대기 중</span>
+        </div>
+      </div>
+
+      <!-- 번역 평균 지연 -->
+      <div class="stat-card">
+        <div class="stat-label">번역 평균 지연</div>
+        <div class="stat-value" id="avgLatency">—</div>
+        <div class="stat-sub">ms</div>
+      </div>
+
+      <!-- 뷰어 접속 수 -->
+      <div class="stat-card">
+        <div class="stat-label">뷰어 접속 수</div>
+        <div class="stat-value accent" id="viewerCount">0</div>
+        <div class="stat-sub">명 접속 중</div>
+      </div>
+
+      <!-- 최근 신뢰도 -->
+      <div class="stat-card">
+        <div class="stat-label">최근 STT 신뢰도</div>
+        <div class="stat-value success" id="statConfidence">—</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- 하단 상태바 -->
+<div class="status-bar">
+  <span id="connStatus">● WebSocket 연결 중...</span>
+  <span id="statLatency"></span>
+</div>
+
+<script>
+// ── 설정 (서버에서 fetch) ──
+let MAX_SEGMENTS = 5;
+let LANGUAGES = {};
+let MODELS = [];
+let DEFAULT_MODEL = '';
+
+// ── 상태 ──
+let ws = null;
+let segments = [];
+let selectedLanguages = [];
+let isRunning = false;
+let latencyHistory = [];
+
+// ── 초기화 ──
+window.addEventListener('load', async () => {
+  await loadConfig();
+  initLanguageCheckboxes();
+  initModelSelect();
+  connectWebSocket();
+});
+
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const cfg = await res.json();
+    LANGUAGES = cfg.languages;
+    MODELS = cfg.models;
+    DEFAULT_MODEL = cfg.default_model;
+    MAX_SEGMENTS = cfg.max_segments;
+  } catch (e) {
+    console.error('설정 로드 실패:', e);
+  }
+}
+
+function initLanguageCheckboxes() {
+  const container = document.getElementById('langCheckboxes');
+  for (const [code, cfg] of Object.entries(LANGUAGES)) {
+    const label = document.createElement('label');
+    label.className = 'checkbox-label';
+    label.innerHTML = `<input type="checkbox" value="${code}" checked> ${cfg.flag} ${cfg.name}`;
+    container.appendChild(label);
+  }
+}
+
+function initModelSelect() {
+  const sel = document.getElementById('modelSelect');
+  MODELS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    if (m === DEFAULT_MODEL) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function getSelectedLanguages() {
+  const checks = document.querySelectorAll('#langCheckboxes input:checked');
+  return Array.from(checks).map(c => c.value);
+}
+
+// ── WebSocket ──
+function connectWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/admin`);
+
+  ws.onopen = () => {
+    document.getElementById('connStatus').textContent = '● 연결됨';
+    ws.send(JSON.stringify({ action: 'get_mics' }));
+  };
+
+  ws.onmessage = (evt) => {
+    const data = JSON.parse(evt.data);
+    handleMessage(data);
+  };
+
+  ws.onclose = () => {
+    document.getElementById('connStatus').textContent = '● 연결 끊김 — 재연결 중...';
+    updateStatus('error', '연결 끊김');
+    if (isRunning) {
+      isRunning = false;
+      updateButtons();
+    }
+    setTimeout(connectWebSocket, 3000);
+  };
+
+  ws.onerror = () => {
+    updateStatus('error', '연결 오류');
+  };
+}
+
+function handleMessage(data) {
+  switch (data.type) {
+    case 'mics':
+      populateMics(data.devices);
+      break;
+    case 'status':
+      updateStatus(data.state, data.message);
+      break;
+    case 'stt':
+      addSegment(data.segment_id, data.text, data.confidence);
+      break;
+    case 'translation':
+      addTranslation(data.segment_id, data.lang, data.text, data.latency_ms, data.error, data.refined_ko);
+      break;
+    case 'error':
+      updateStatus('error', data.message);
+      break;
+    case 'viewer_count':
+      document.getElementById('viewerCount').textContent = data.count;
+      break;
+  }
+}
+
+function populateMics(devices) {
+  const sel = document.getElementById('micSelect');
+  sel.innerHTML = '';
+  devices.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.index;
+    opt.textContent = d.name + (d.is_default ? ' (기본)' : '');
+    if (d.is_default) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// ── 세션 제어 ──
+function startSession() {
+  selectedLanguages = getSelectedLanguages();
+  if (selectedLanguages.length === 0) {
+    alert('번역할 언어를 하나 이상 선택하세요.');
+    return;
+  }
+
+  segments = [];
+  latencyHistory = [];
+  renderSubtitles();
+
+  const msg = {
+    action: 'start',
+    mic_index: parseInt(document.getElementById('micSelect').value),
+    languages: selectedLanguages,
+    model: document.getElementById('modelSelect').value,
+  };
+  ws.send(JSON.stringify(msg));
+
+  isRunning = true;
+  updateButtons();
+}
+
+function stopSession() {
+  ws.send(JSON.stringify({ action: 'stop' }));
+  isRunning = false;
+  updateButtons();
+}
+
+function updateButtons() {
+  document.getElementById('btnStart').disabled = isRunning;
+  document.getElementById('btnStop').disabled = !isRunning;
+  document.getElementById('micSelect').disabled = isRunning;
+  document.getElementById('modelSelect').disabled = isRunning;
+  document.querySelectorAll('#langCheckboxes input').forEach(c => c.disabled = isRunning);
+}
+
+// ── 자막 표시 ──
+function addSegment(segmentId, koreanText, confidence) {
+  segments.push({
+    id: segmentId,
+    ko: koreanText,
+    ko_raw: koreanText,
+    ko_refined: false,
+    confidence: confidence,
+    translations: {},
+  });
+  if (segments.length > MAX_SEGMENTS) segments.shift();
+
+  const conf = confidence ? confidence.toFixed(3) : '—';
+  document.getElementById('statConfidence').textContent = conf;
+  renderSubtitles();
+}
+
+function addTranslation(segmentId, lang, text, latencyMs, error, refinedKo) {
+  const seg = segments.find(s => s.id === segmentId);
+  if (seg) {
+    seg.translations[lang] = { text, latency: latencyMs, error };
+
+    if (refinedKo && refinedKo.trim() && !seg.ko_refined) {
+      seg.ko = refinedKo;
+      seg.ko_refined = true;
+    }
+
+    // 누적 평균 지연 계산
+    if (latencyMs) {
+      latencyHistory.push(latencyMs);
+      if (latencyHistory.length > 20) latencyHistory.shift();
+      const avg = latencyHistory.reduce((a, b) => a + b, 0) / latencyHistory.length;
+      document.getElementById('avgLatency').textContent = Math.round(avg);
+    }
+
+    document.getElementById('statLatency').textContent =
+      `최근 번역: ${Math.round(latencyMs)}ms`;
+    renderSubtitles();
+  }
+}
+
+function renderSubtitles() {
+  const area = document.getElementById('subtitleArea');
+  const empty = document.getElementById('emptyState');
+
+  if (segments.length === 0) {
+    empty.style.display = '';
+    area.querySelectorAll('.segment').forEach(el => el.remove());
+    return;
+  }
+  empty.style.display = 'none';
+
+  area.querySelectorAll('.segment').forEach(el => el.remove());
+
+  segments.forEach(seg => {
+    const div = document.createElement('div');
+    div.className = 'segment';
+
+    const koLabel = seg.ko_refined
+      ? `<span class="refined-badge" title="원본: ${escapeAttr(seg.ko_raw)}">✎</span> `
+      : '';
+    let html = `<div class="seg-ko">${koLabel}${escapeHtml(seg.ko)}</div>`;
+
+    selectedLanguages.forEach(lang => {
+      const tr = seg.translations[lang];
+      const cfg = LANGUAGES[lang];
+      if (!cfg) return;
+      if (tr) {
+        const cls = tr.error ? 'pending' : lang;
+        html += `<div class="seg-translation ${cls}">${cfg.flag} ${escapeHtml(tr.text)}</div>`;
+      } else {
+        html += `<div class="seg-translation pending">${cfg.flag} 번역 중...</div>`;
+      }
+    });
+
+    const latencies = Object.values(seg.translations)
+      .filter(t => t.latency)
+      .map(t => `${Math.round(t.latency)}ms`);
+    const metaText = `신뢰도 ${seg.confidence ? seg.confidence.toFixed(3) : '—'}` +
+      (latencies.length ? ` · 번역 ${latencies.join(' / ')}` : '');
+    html += `<div class="seg-meta">${metaText}</div>`;
+
+    div.innerHTML = html;
+    area.appendChild(div);
+  });
+
+  area.scrollTop = area.scrollHeight;
+}
+
+// ── 상태 업데이트 ──
+function updateStatus(state, message) {
+  const dot = document.getElementById('statusDot');
+  const msg = document.getElementById('statusMsg');
+  dot.className = `status-dot dot-${state}`;
+  msg.textContent = message;
+}
+
+// ── 유틸 ──
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

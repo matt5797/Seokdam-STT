@@ -6,7 +6,7 @@
 - 한국어 + 영어/네팔어 자막 병기
 
 사전 준비:
-  pip install grpcio grpcio-tools google-genai fastapi uvicorn sounddevice
+  pip install grpcio grpcio-tools google-genai fastapi uvicorn sounddevice jinja2
 
 실행:
   python main.py
@@ -21,6 +21,7 @@ import sys
 import threading
 import time
 import webbrowser
+import pathlib
 from dataclasses import dataclass
 from typing import Optional
 
@@ -355,8 +356,9 @@ def get_microphones():
 class SubtitleSession:
     """하나의 자막 세션 (시작~중지)을 관리"""
 
-    def __init__(self, websocket, languages, model, mic_index):
-        self.ws = websocket
+    def __init__(self, broadcast_fn, admin_ws, languages, model, mic_index):
+        self.broadcast_fn = broadcast_fn
+        self.admin_ws = admin_ws
         self.languages = languages
         self.model = model
         self.mic_index = mic_index if mic_index >= 0 else None
@@ -552,6 +554,7 @@ class SubtitleSession:
                         "type": "status",
                         "state": "running",
                         "message": "인식 중...",
+                        "languages": self.languages,
                     })
                 else:
                     await self._send({
@@ -618,593 +621,104 @@ class SubtitleSession:
         })
 
     async def _send(self, data):
-        """WebSocket으로 JSON 전송 (에러 무시)"""
-        try:
-            await self.ws.send_json(data)
-        except Exception:
-            pass
+        """관리자 + 모든 뷰어에게 전송"""
+        msg_type = data.get("type")
+        if msg_type in ("stt", "translation", "status"):
+            # 뷰어 브로드캐스트
+            await self.broadcast_fn(data)
+            # 관리자에게도 전송
+            try:
+                await self.admin_ws.send_json(data)
+            except Exception:
+                pass
+        else:
+            # error / mics 등은 관리자에게만
+            try:
+                await self.admin_ws.send_json(data)
+            except Exception:
+                pass
 
 
 # ══════════════════════════════════════════════
-# 6. HTML 템플릿 (인라인)
+# 6. FastAPI 서버
 # ══════════════════════════════════════════════
 
-HTML_TEMPLATE = """<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석담교회 말씀 이음</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@600;700&display=swap');
-
-  :root {
-    --bg:           #FAF6F0;
-    --bg-warm:      #F4EDE4;
-    --bg-card:      #FFFFFF;
-    --bg-header:    #F0E8DD;
-    --border:       #E0D5C7;
-    --border-light: #EBE3D8;
-
-    --text:         #3D2E1F;
-    --text-light:   #7A6B5B;
-    --text-muted:   #A89882;
-
-    --accent:       #8B2635;   /* 와인/버건디 — 교회 전통색 */
-    --accent-light: #B8455A;
-    --gold:         #B8963E;   /* 금색 포인트 */
-    --gold-soft:    #D4B96A;
-
-    --en-color:     #2E5D8A;   /* 영어 — 차분한 블루 */
-    --ne-color:     #5B7A3A;   /* 네팔어 — 올리브 그린 */
-    --pending:      #C4B8A8;
-
-    --success:      #4A8B3F;
-    --error:        #B8363B;
-    --warning:      #C4922A;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* ── 헤더 ── */
-  .header {
-    background: var(--bg-header);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 28px;
-    box-shadow: 0 1px 4px rgba(60, 40, 20, 0.06);
-  }
-
-  .header h1 {
-    font-family: 'Noto Serif KR', serif;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--accent);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    letter-spacing: -0.02em;
-  }
-
-  .header h1 .cross {
-    color: var(--gold);
-    font-size: 22px;
-  }
-
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    align-items: center;
-  }
-
-  .control-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .control-group label {
-    font-size: 14px;
-    color: var(--text-light);
-    white-space: nowrap;
-    font-weight: 600;
-  }
-
-  select {
-    background: var(--bg-card);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 12px;
-    font-size: 14px;
-    font-family: inherit;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  select:focus { border-color: var(--accent); }
-
-  .checkbox-group {
-    display: flex;
-    gap: 12px;
-  }
-
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    cursor: pointer;
-    user-select: none;
-    color: var(--text);
-  }
-
-  .checkbox-label input[type="checkbox"] {
-    accent-color: var(--accent);
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-  }
-
-  .btn-group {
-    display: flex;
-    gap: 8px;
-    margin-left: auto;
-  }
-
-  .btn {
-    padding: 9px 24px;
-    border: none;
-    border-radius: 7px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.2s;
-    letter-spacing: 0.02em;
-  }
-  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-  .btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
-
-  .btn-start {
-    background: var(--success);
-    color: #fff;
-  }
-  .btn-stop {
-    background: var(--error);
-    color: #fff;
-  }
-
-  /* ── 자막 영역 ── */
-  .subtitle-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 24px 28px;
-    gap: 14px;
-    min-height: 420px;
-  }
-
-  .segment {
-    background: var(--bg-card);
-    border-radius: 10px;
-    padding: 18px 22px;
-    border-left: 4px solid var(--gold-soft);
-    box-shadow: 0 1px 6px rgba(60, 40, 20, 0.07);
-    animation: fadeIn 0.35s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .seg-ko {
-    font-family: 'Noto Serif KR', serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.6;
-    margin-bottom: 8px;
-  }
-
-  .seg-translation {
-    font-size: 19px;
-    line-height: 1.55;
-    margin-top: 5px;
-    padding-left: 2px;
-  }
-
-  .seg-translation.en { color: var(--en-color); }
-  .seg-translation.ne { color: var(--ne-color); }
-  .seg-translation.pending { color: var(--pending); font-style: italic; }
-
-  .seg-meta {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px solid var(--border-light);
-  }
-
-  .refined-badge {
-    font-size: 13px;
-    color: var(--gold);
-    cursor: help;
-  }
-
-  .empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 17px;
-    margin: auto;
-    line-height: 1.8;
-  }
-  .empty-state .cross-icon {
-    font-size: 40px;
-    display: block;
-    margin-bottom: 8px;
-    color: var(--gold-soft);
-  }
-
-  /* ── 상태바 ── */
-  .status-bar {
-    background: var(--bg-header);
-    border-top: 1px solid var(--border);
-    padding: 9px 28px;
-    display: flex;
-    gap: 24px;
-    font-size: 13px;
-    color: var(--text-light);
-    align-items: center;
-  }
-
-  .status-dot {
-    display: inline-block;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    margin-right: 5px;
-  }
-  .dot-ready    { background: var(--text-muted); }
-  .dot-connecting { background: var(--warning); animation: pulse 1s infinite; }
-  .dot-running  { background: var(--success); animation: pulse 1.5s infinite; }
-  .dot-error    { background: var(--error); }
-  .dot-stopped  { background: var(--text-muted); }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-</style>
-</head>
-<body>
-
-<!-- 헤더 -->
-<div class="header">
-  <h1><span class="cross">✝</span> 석담교회 말씀 이음</h1>
-  <div class="controls">
-    <div class="control-group">
-      <label>마이크:</label>
-      <select id="micSelect"><option value="-1">로딩 중...</option></select>
-    </div>
-    <div class="control-group">
-      <label>번역:</label>
-      <div class="checkbox-group" id="langCheckboxes"></div>
-    </div>
-    <div class="control-group">
-      <label>모델:</label>
-      <select id="modelSelect"></select>
-    </div>
-    <div class="btn-group">
-      <button class="btn btn-start" id="btnStart" onclick="startSession()">● 시작</button>
-      <button class="btn btn-stop" id="btnStop" onclick="stopSession()" disabled>■ 중지</button>
-    </div>
-  </div>
-</div>
-
-<!-- 자막 -->
-<div class="subtitle-area" id="subtitleArea">
-  <div class="empty-state" id="emptyState">
-    <span class="cross-icon">✝</span>
-    시작 버튼을 눌러 자막을 시작하세요
-  </div>
-</div>
-
-<!-- 상태바 -->
-<div class="status-bar">
-  <span id="statusText">
-    <span class="status-dot dot-ready" id="statusDot"></span>
-    <span id="statusMsg">대기 중</span>
-  </span>
-  <span id="statConfidence"></span>
-  <span id="statLatency"></span>
-</div>
-
-<script>
-// ── 설정 ──
-const MAX_SEGMENTS = """ + str(config.MAX_DISPLAY_SENTENCES) + """;
-const LANGUAGES = """ + json.dumps(config.LANGUAGE_CONFIGS, ensure_ascii=False) + """;
-const MODELS = """ + json.dumps(config.GEMINI_MODELS) + """;
-const DEFAULT_MODEL = """ + json.dumps(config.DEFAULT_GEMINI_MODEL) + """;
-
-// ── 상태 ──
-let ws = null;
-let segments = [];
-let selectedLanguages = [];
-let isRunning = false;
-
-// ── 초기화 ──
-window.addEventListener('load', () => {
-  initLanguageCheckboxes();
-  initModelSelect();
-  connectWebSocket();
-});
-
-function initLanguageCheckboxes() {
-  const container = document.getElementById('langCheckboxes');
-  for (const [code, cfg] of Object.entries(LANGUAGES)) {
-    const label = document.createElement('label');
-    label.className = 'checkbox-label';
-    label.innerHTML = `<input type="checkbox" value="${code}" checked> ${cfg.flag} ${cfg.name}`;
-    container.appendChild(label);
-  }
-}
-
-function initModelSelect() {
-  const sel = document.getElementById('modelSelect');
-  MODELS.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m;
-    if (m === DEFAULT_MODEL) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
-
-function getSelectedLanguages() {
-  const checks = document.querySelectorAll('#langCheckboxes input:checked');
-  return Array.from(checks).map(c => c.value);
-}
-
-// ── WebSocket ──
-function connectWebSocket() {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}/ws`);
-
-  ws.onopen = () => {
-    updateStatus('ready', '대기 중');
-    ws.send(JSON.stringify({ action: 'get_mics' }));
-  };
-
-  ws.onmessage = (evt) => {
-    const data = JSON.parse(evt.data);
-    handleMessage(data);
-  };
-
-  ws.onclose = () => {
-    updateStatus('error', '연결 끊김');
-    if (isRunning) {
-      isRunning = false;
-      updateButtons();
-    }
-    // 3초 후 재연결
-    setTimeout(connectWebSocket, 3000);
-  };
-
-  ws.onerror = () => {
-    updateStatus('error', '연결 오류');
-  };
-}
-
-function handleMessage(data) {
-  switch (data.type) {
-    case 'mics':
-      populateMics(data.devices);
-      break;
-    case 'status':
-      updateStatus(data.state, data.message);
-      break;
-    case 'stt':
-      addSegment(data.segment_id, data.text, data.confidence);
-      break;
-    case 'translation':
-      addTranslation(data.segment_id, data.lang, data.text, data.latency_ms, data.error, data.refined_ko);
-      break;
-    case 'error':
-      updateStatus('error', data.message);
-      break;
-  }
-}
-
-function populateMics(devices) {
-  const sel = document.getElementById('micSelect');
-  sel.innerHTML = '';
-  devices.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.index;
-    opt.textContent = d.name + (d.is_default ? ' (기본)' : '');
-    if (d.is_default) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
-
-// ── 세션 제어 ──
-function startSession() {
-  selectedLanguages = getSelectedLanguages();
-  if (selectedLanguages.length === 0) {
-    alert('번역할 언어를 하나 이상 선택하세요.');
-    return;
-  }
-
-  segments = [];
-  renderSubtitles();
-
-  const msg = {
-    action: 'start',
-    mic_index: parseInt(document.getElementById('micSelect').value),
-    languages: selectedLanguages,
-    model: document.getElementById('modelSelect').value,
-  };
-  ws.send(JSON.stringify(msg));
-
-  isRunning = true;
-  updateButtons();
-}
-
-function stopSession() {
-  ws.send(JSON.stringify({ action: 'stop' }));
-  isRunning = false;
-  updateButtons();
-}
-
-function updateButtons() {
-  document.getElementById('btnStart').disabled = isRunning;
-  document.getElementById('btnStop').disabled = !isRunning;
-  // 실행 중에는 설정 변경 불가
-  document.getElementById('micSelect').disabled = isRunning;
-  document.getElementById('modelSelect').disabled = isRunning;
-  document.querySelectorAll('#langCheckboxes input').forEach(c => c.disabled = isRunning);
-}
-
-// ── 자막 표시 ──
-function addSegment(segmentId, koreanText, confidence) {
-  segments.push({
-    id: segmentId,
-    ko: koreanText,
-    ko_raw: koreanText,
-    ko_refined: false,
-    confidence: confidence,
-    translations: {},
-  });
-  if (segments.length > MAX_SEGMENTS) segments.shift();
-
-  document.getElementById('statConfidence').textContent = `신뢰도: ${confidence.toFixed(3)}`;
-  renderSubtitles();
-}
-
-function addTranslation(segmentId, lang, text, latencyMs, error, refinedKo) {
-  const seg = segments.find(s => s.id === segmentId);
-  if (seg) {
-    seg.translations[lang] = { text, latency: latencyMs, error };
-
-    // 다듬어진 한국어가 있고 아직 교체 안 된 경우 → 원문 교체
-    if (refinedKo && refinedKo.trim() && !seg.ko_refined) {
-      seg.ko = refinedKo;
-      seg.ko_refined = true;
-    }
-
-    document.getElementById('statLatency').textContent = `번역지연: ${Math.round(latencyMs)}ms`;
-    renderSubtitles();
-  }
-}
-
-function renderSubtitles() {
-  const area = document.getElementById('subtitleArea');
-  const empty = document.getElementById('emptyState');
-
-  if (segments.length === 0) {
-    empty.style.display = '';
-    area.querySelectorAll('.segment').forEach(el => el.remove());
-    return;
-  }
-  empty.style.display = 'none';
-
-  // 전체 재렌더링 (간단한 구현)
-  area.querySelectorAll('.segment').forEach(el => el.remove());
-
-  segments.forEach(seg => {
-    const div = document.createElement('div');
-    div.className = 'segment';
-
-    // 한국어 원문 (다듬어진 경우 ✎ 표시, 원본은 툴팁)
-    const koLabel = seg.ko_refined
-      ? `<span class="refined-badge" title="원본: ${escapeAttr(seg.ko_raw)}">✎</span> `
-      : '';
-    let html = `<div class="seg-ko">${koLabel}${escapeHtml(seg.ko)}</div>`;
-
-    selectedLanguages.forEach(lang => {
-      const tr = seg.translations[lang];
-      const cfg = LANGUAGES[lang];
-      if (tr) {
-        const cls = tr.error ? 'pending' : lang;
-        html += `<div class="seg-translation ${cls}">${cfg.flag} ${escapeHtml(tr.text)}</div>`;
-      } else {
-        html += `<div class="seg-translation pending">${cfg.flag} 번역 중...</div>`;
-      }
-    });
-
-    const latencies = Object.values(seg.translations)
-      .filter(t => t.latency)
-      .map(t => `${Math.round(t.latency)}ms`);
-    const metaText = `신뢰도 ${seg.confidence.toFixed(3)}` +
-      (latencies.length ? ` · 번역 ${latencies.join(' / ')}` : '');
-    html += `<div class="seg-meta">${metaText}</div>`;
-
-    div.innerHTML = html;
-    area.appendChild(div);
-  });
-
-  // 스크롤 하단
-  area.scrollTop = area.scrollHeight;
-}
-
-// ── 유틸 ──
-function updateStatus(state, message) {
-  const dot = document.getElementById('statusDot');
-  const msg = document.getElementById('statusMsg');
-  dot.className = `status-dot dot-${state}`;
-  msg.textContent = message;
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function escapeAttr(str) {
-  return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-</script>
-</body>
-</html>"""
-
-
-# ══════════════════════════════════════════════
-# 7. FastAPI 서버
-# ══════════════════════════════════════════════
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from connection_manager import ConnectionManager
+
+BASE_DIR = pathlib.Path(__file__).parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 app = FastAPI(title="석담교회 말씀 이음")
+
+manager = ConnectionManager()
 
 # 현재 활성 세션
 active_session: Optional[SubtitleSession] = None
 
 
+@app.middleware("http")
+async def admin_local_only(request: Request, call_next):
+    """관리자 경로는 로컬호스트에서만 접근 허용"""
+    if request.url.path.startswith("/admin") or request.url.path == "/ws/admin":
+        host = request.client.host if request.client else ""
+        if host not in ("127.0.0.1", "::1"):
+            return RedirectResponse(url="/")
+    return await call_next(request)
+
+
 @app.get("/", response_class=HTMLResponse)
-async def index():
-    return HTML_TEMPLATE
+async def viewer_page(request: Request):
+    return templates.TemplateResponse("viewer.html", {"request": request})
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page(request: Request):
+    return templates.TemplateResponse("admin.html", {"request": request})
+
+
+@app.get("/api/config")
+async def api_config():
+    """프론트엔드용 설정값 JSON"""
+    return JSONResponse({
+        "languages": config.LANGUAGE_CONFIGS,
+        "models": config.GEMINI_MODELS,
+        "default_model": config.DEFAULT_GEMINI_MODEL,
+        "max_segments": config.MAX_DISPLAY_SENTENCES,
+    })
+
+
+@app.get("/manifest.json")
+async def manifest():
+    """PWA 매니페스트"""
+    return JSONResponse({
+        "name": "석담교회 말씀 이음",
+        "short_name": "말씀 이음",
+        "description": "실시간 교회 자막 서비스",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#FAF6F0",
+        "theme_color": "#8B2635",
+        "icons": [
+            {
+                "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✝</text></svg>",
+                "sizes": "any",
+                "type": "image/svg+xml",
+            }
+        ],
+    })
+
+
+# ── WebSocket: 관리자 ──
+
+@app.websocket("/ws/admin")
+async def ws_admin(websocket: WebSocket):
     global active_session
 
     await websocket.accept()
+    await manager.connect_admin(websocket)
 
     try:
         while True:
@@ -1232,32 +746,70 @@ async def websocket_endpoint(websocket: WebSocket):
                 model = msg.get("model", config.DEFAULT_GEMINI_MODEL)
                 mic_index = msg.get("mic_index", -1)
 
+                manager.set_streaming_state(True, languages)
+
+                # 뷰어에게 새 세션 시작 알림 → 클라이언트 세그먼트 초기화
+                await manager.broadcast_to_viewers({"type": "session_start", "languages": languages})
+
                 active_session = SubtitleSession(
-                    websocket=websocket,
+                    broadcast_fn=manager.broadcast_to_viewers,
+                    admin_ws=websocket,
                     languages=languages,
                     model=model,
                     mic_index=mic_index,
                 )
-                # 세션을 백그라운드 태스크로 실행
                 asyncio.create_task(active_session.start())
 
             elif action == "stop":
                 if active_session:
                     await active_session.stop()
                     active_session = None
+                manager.set_streaming_state(False, [])
 
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        print(f"[WS 오류] {e}")
+        print(f"[WS Admin 오류] {e}")
     finally:
         if active_session:
             await active_session.stop()
             active_session = None
+        manager.set_streaming_state(False, [])
+        await manager.disconnect_admin(websocket)
+
+
+# ── WebSocket: 뷰어 ──
+
+@app.websocket("/ws/viewer")
+async def ws_viewer(websocket: WebSocket):
+    await websocket.accept()
+    await manager.connect_viewer(websocket)
+    await manager.send_current_state(websocket)
+
+    try:
+        while True:
+            # 30초 heartbeat (ping/pong 유지)
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                # 클라이언트 ping 응답
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except asyncio.TimeoutError:
+                # 서버→클라이언트 heartbeat
+                try:
+                    await websocket.send_json({"type": "heartbeat"})
+                except Exception:
+                    break
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        await manager.disconnect_viewer(websocket)
 
 
 # ══════════════════════════════════════════════
-# 8. 메인 엔트리
+# 7. 메인 엔트리
 # ══════════════════════════════════════════════
 
 def _is_port_in_use(host, port):
@@ -1298,17 +850,18 @@ def main():
         print(f"[*] 이미 실행 중인 인스턴스 감지 (포트 {port})")
         print(f"[*] 기존 브라우저 탭에서 사용하거나, 기존 프로세스를 종료하세요.")
         print(f"[*] 브라우저를 열겠습니다...")
-        webbrowser.open(url)
+        webbrowser.open(f"{url}/admin")
         sys.exit(0)
 
     print("=" * 50)
     print("  ✝ 석담교회 말씀 이음")
-    print(f"  서버: {url}")
+    print(f"  관리자: {url}/admin")
+    print(f"  뷰어:   {url}/")
     print("  종료: Ctrl+C")
     print("=" * 50)
 
     # 브라우저 자동 오픈 (약간의 딜레이)
-    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+    threading.Timer(1.5, lambda: webbrowser.open(f"{url}/admin")).start()
 
     import uvicorn
     uvicorn.run(app, host=host, port=port, log_level="warning")

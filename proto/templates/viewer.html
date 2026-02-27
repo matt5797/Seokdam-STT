@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>석담교회 말씀 이음</title>
+
+<!-- PWA 메타 태그 -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="말씀 이음">
+<meta name="theme-color" content="#8B2635">
+<link rel="manifest" href="/manifest.json">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@600;700&display=swap');
+
+  :root {
+    --bg:        #FAF6F0;
+    --bg-header: #F0E8DD;
+    --bg-card:   #FFFFFF;
+    --border:    #E0D5C7;
+    --text:      #3D2E1F;
+    --text-muted:#A89882;
+    --accent:    #8B2635;
+    --gold:      #B8963E;
+    --gold-soft: #D4B96A;
+    --en-color:  #2E5D8A;
+    --ne-color:  #5B7A3A;
+    --success:   #4A8B3F;
+    --error:     #B8363B;
+    --warning:   #C4922A;
+
+    --size-ko: 22px;
+    --size-tr: 19px;
+  }
+
+  body.mode-large      { --size-ko: 32px; --size-tr: 28px; }
+  body.mode-fullscreen { --size-ko: 46px; --size-tr: 38px; }
+
+  /* 전체화면 모드에서만 헤더·하단바 숨김 */
+  body.mode-fullscreen .header   { display: none; }
+  body.mode-fullscreen .lang-bar { display: none; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── 헤더 (모든 모드에서 표시) ── */
+  .header {
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+  }
+  .header-title .cross { color: var(--gold); }
+
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text);
+    font-family: inherit;
+    font-weight: 600;
+    transition: background 0.15s;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover  { background: var(--border); }
+  .icon-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* 상태 pill */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    flex-shrink: 0;
+  }
+
+  .pill-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .pill-dot.running    { background: var(--success); animation: pulse 1.5s infinite; }
+  .pill-dot.error      { background: var(--error); }
+  .pill-dot.connecting { background: var(--warning); animation: pulse 1s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  /* ── 자막 영역 ── */
+  .subtitle-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 16px;
+    gap: 12px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .segment {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 16px 18px;
+    border-left: 4px solid var(--gold-soft);
+    box-shadow: 0 1px 6px rgba(60, 40, 20, 0.07);
+    animation: fadeIn 0.35s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .seg-ko {
+    font-family: 'Noto Serif KR', serif;
+    font-size: var(--size-ko);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.55;
+  }
+
+  .seg-translation {
+    font-size: var(--size-tr);
+    line-height: 1.5;
+    margin-top: 6px;
+    padding-left: 2px;
+  }
+  .seg-translation.en { color: var(--en-color); }
+  .seg-translation.ne { color: var(--ne-color); }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 18px;
+    margin: auto;
+    line-height: 1.9;
+  }
+  .empty-state .cross-big {
+    font-size: 44px;
+    display: block;
+    margin-bottom: 10px;
+    color: var(--gold-soft);
+  }
+
+  /* ── 하단 바: 언어 체크박스 + 크기 버튼 ── */
+  .lang-bar {
+    background: var(--bg-header);
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    min-height: 46px;
+  }
+
+  /* 언어 영역 (flex-grow) */
+  .lang-chips {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .lang-bar-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  .lang-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 11px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .lang-chip input { display: none; }
+  .lang-chip.checked {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .lang-bar-idle {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* 크기 버튼 구분선 */
+  .bar-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    flex-shrink: 0;
+    margin: 0 2px;
+  }
+
+  /* 크기 버튼 그룹 */
+  .size-btns {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .size-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-weight: 700;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .size-btn:hover  { background: var(--border); color: var(--text); }
+  .size-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── 토스트 ── */
+  .toast {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(61, 46, 31, 0.9);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 100;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body class="mode-base">
+
+<!-- 헤더 -->
+<div class="header">
+  <div class="header-title">
+    <span class="cross">✝</span> 석담교회 말씀 이음
+  </div>
+
+  <button class="icon-btn" onclick="audioToggle()" title="오디오 (준비 중)">🔊</button>
+
+  <div class="status-pill">
+    <span class="pill-dot" id="pillDot"></span>
+    <span id="pillText">연결 중...</span>
+  </div>
+</div>
+
+<!-- 자막 영역 -->
+<div class="subtitle-area" id="subtitleArea">
+  <div class="empty-state" id="emptyState">
+    <span class="cross-big">✝</span>
+    예배가 시작되면<br>자막이 여기에 표시됩니다
+  </div>
+</div>
+
+<!-- 하단 바: 언어 체크박스 + 크기 버튼 -->
+<div class="lang-bar">
+  <!-- 언어 영역 -->
+  <div class="lang-chips" id="langChips">
+    <span class="lang-bar-idle" id="langBarIdle">예배 시작 전</span>
+  </div>
+
+  <div class="bar-divider"></div>
+
+  <!-- 글씨 크기 버튼 (항상 노출) -->
+  <div class="size-btns">
+    <button class="size-btn" id="btnBase"       onclick="setMode('base')"       title="기본 크기">A</button>
+    <button class="size-btn" id="btnLarge"      onclick="setMode('large')"      title="큰 글씨">AA</button>
+    <button class="size-btn" id="btnFullscreen" onclick="setMode('fullscreen')" title="전체화면">⛶</button>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 상태 ──
+let sizeMode       = localStorage.getItem('sizeMode') || 'base';
+let segments       = [];
+let ws             = null;
+let reconnectDelay = 1000;
+let wakeLock       = null;
+let LANGUAGES      = {};
+let MAX_SEGMENTS   = 5;
+
+// 서버에서 현재 번역 중인 언어 목록
+let activeLanguages  = [];
+// 사용자가 체크한 언어 (Set)
+let checkedLanguages = new Set(JSON.parse(localStorage.getItem('checkedLangs') || '[]'));
+
+// ── 초기화 ──
+window.addEventListener('load', async () => {
+  await loadConfig();
+  applyMode(sizeMode);
+  connect();
+  requestWakeLock();
+});
+
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const cfg = await res.json();
+    LANGUAGES    = cfg.languages;
+    MAX_SEGMENTS = cfg.max_segments;
+  } catch (e) {
+    LANGUAGES = {
+      en: { name: 'English', flag: '🇬🇧' },
+      ne: { name: 'नेपाली',  flag: '🇳🇵' },
+    };
+  }
+}
+
+// ── 언어 바 렌더링 ──
+function setActiveLanguages(languages) {
+  activeLanguages = languages || [];
+
+  // 새로 활성화된 언어는 기본 체크 (localStorage에 없으면)
+  activeLanguages.forEach(code => {
+    if (!checkedLanguages.has(code)) checkedLanguages.add(code);
+  });
+
+  buildLangChips();
+  renderSubtitles();
+}
+
+function clearActiveLanguages() {
+  activeLanguages = [];
+  buildLangChips();
+}
+
+function buildLangChips() {
+  const container = document.getElementById('langChips');
+  container.innerHTML = '';
+
+  if (activeLanguages.length === 0) {
+    const span = document.createElement('span');
+    span.className = 'lang-bar-idle';
+    span.textContent = '예배 시작 전';
+    container.appendChild(span);
+    return;
+  }
+
+  const label = document.createElement('span');
+  label.className = 'lang-bar-label';
+  label.textContent = '번역:';
+  container.appendChild(label);
+
+  activeLanguages.forEach(code => {
+    const cfg  = LANGUAGES[code] || { name: code, flag: '' };
+    const chip = document.createElement('label');
+    const isChecked = checkedLanguages.has(code);
+    chip.className = 'lang-chip' + (isChecked ? ' checked' : '');
+
+    const input  = document.createElement('input');
+    input.type   = 'checkbox';
+    input.value  = code;
+    input.checked = isChecked;
+
+    input.addEventListener('change', () => {
+      if (input.checked) {
+        checkedLanguages.add(code);
+        chip.classList.add('checked');
+      } else {
+        checkedLanguages.delete(code);
+        chip.classList.remove('checked');
+      }
+      saveCheckedLangs();
+      renderSubtitles();
+    });
+
+    chip.appendChild(input);
+    chip.insertAdjacentText('beforeend', `${cfg.flag} ${cfg.name}`);
+    container.appendChild(chip);
+  });
+}
+
+function saveCheckedLangs() {
+  localStorage.setItem('checkedLangs', JSON.stringify([...checkedLanguages]));
+}
+
+// ── WebSocket + 자동 재연결 ──
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/viewer`);
+
+  ws.onopen = () => {
+    reconnectDelay = 1000;
+    setPillState('running', '연결됨');
+  };
+
+  ws.onmessage = (evt) => {
+    if (evt.data === 'pong') return;
+    try { handleMessage(JSON.parse(evt.data)); } catch (e) {}
+  };
+
+  ws.onclose = () => {
+    setPillState('error', '재연결 중...');
+    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+    setTimeout(connect, reconnectDelay);
+  };
+
+  ws.onerror = () => { setPillState('error', '연결 오류'); };
+}
+
+function handleMessage(data) {
+  switch (data.type) {
+    case 'heartbeat':
+      break;
+
+    case 'session_start':
+      segments = [];
+      setActiveLanguages(data.languages || []);
+      break;
+
+    case 'status':
+      if (data.state === 'running') {
+        setPillState('running', '인식 중');
+        // 언어 목록이 있으면 갱신 (재접속·리플레이 시)
+        if (data.languages && data.languages.length > 0) {
+          setActiveLanguages(data.languages);
+        }
+      } else if (data.state === 'connecting') {
+        setPillState('connecting', '연결 중...');
+      } else {
+        // stopped
+        setPillState('', '대기 중');
+        clearActiveLanguages();
+      }
+      break;
+
+    case 'stt': {
+      if (!segments.find(s => s.id === data.segment_id)) {
+        segments.push({ id: data.segment_id, ko: data.text, translations: {} });
+        if (segments.length > MAX_SEGMENTS) segments.shift();
+        renderSubtitles();
+      }
+      break;
+    }
+
+    case 'translation': {
+      const seg = segments.find(s => s.id === data.segment_id);
+      if (seg) {
+        seg.translations[data.lang] = data.text;
+        if (data.refined_ko && data.refined_ko.trim()) seg.ko = data.refined_ko;
+        renderSubtitles();
+      }
+      break;
+    }
+  }
+}
+
+// ── 자막 렌더링 ──
+function renderSubtitles() {
+  const area  = document.getElementById('subtitleArea');
+  const empty = document.getElementById('emptyState');
+
+  if (segments.length === 0) {
+    empty.style.display = '';
+    area.querySelectorAll('.segment').forEach(el => el.remove());
+    return;
+  }
+  empty.style.display = 'none';
+  area.querySelectorAll('.segment').forEach(el => el.remove());
+
+  segments.forEach(seg => {
+    const div = document.createElement('div');
+    div.className = 'segment';
+
+    let html = `<div class="seg-ko">${escapeHtml(seg.ko)}</div>`;
+
+    // 서버가 번역 중이고, 사용자가 체크한 언어만 표시
+    for (const code of activeLanguages) {
+      if (!checkedLanguages.has(code)) continue;
+      const cfg = LANGUAGES[code] || { flag: '', name: code };
+      const tr  = seg.translations[code];
+      if (tr) {
+        html += `<div class="seg-translation ${code}">${cfg.flag} ${escapeHtml(tr)}</div>`;
+      }
+      // 아직 도착 안 한 번역은 표시하지 않음
+    }
+
+    div.innerHTML = html;
+    area.appendChild(div);
+  });
+
+  area.scrollTop = area.scrollHeight;
+}
+
+// ── 글씨 크기 모드 ──
+function setMode(mode) {
+  sizeMode = mode;
+  document.body.className = `mode-${mode}`;
+  localStorage.setItem('sizeMode', mode);
+
+  document.getElementById('btnBase').classList.toggle('active',       mode === 'base');
+  document.getElementById('btnLarge').classList.toggle('active',      mode === 'large');
+  document.getElementById('btnFullscreen').classList.toggle('active', mode === 'fullscreen');
+
+  if (mode === 'fullscreen') {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  } else if (document.fullscreenElement) {
+    document.exitFullscreen?.().catch(() => {});
+  }
+}
+
+function applyMode(mode) { setMode(mode); }
+
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && sizeMode === 'fullscreen') {
+    setMode('large');
+  }
+});
+
+// ── 오디오 토글 (준비 중) ──
+function audioToggle() { showToast('예배 음성 스트리밍은 준비 중입니다'); }
+
+// ── 상태 pill ──
+function setPillState(state, text) {
+  document.getElementById('pillDot').className = `pill-dot ${state}`;
+  document.getElementById('pillText').textContent = text;
+}
+
+// ── Wake Lock ──
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+
+// ── 토스트 ──
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+// ── 유틸 ──
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>

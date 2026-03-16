@@ -352,6 +352,7 @@ let sizeMode       = localStorage.getItem('sizeMode') || 'base';
 let segments       = [];
 let ws             = null;
 let reconnectDelay = 1000;
+let reconnectTimer = null;
 let wakeLock       = null;
 let LANGUAGES      = {};
 let MAX_SEGMENTS   = 5;
@@ -475,7 +476,8 @@ function connect() {
     setPillState('error', '재연결 중...');
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);
     resetAudioBuffer();
-    setTimeout(connect, reconnectDelay);
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, reconnectDelay);
   };
 
   ws.onerror = () => { setPillState('error', '연결 오류'); };
@@ -592,24 +594,81 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 
-// ── 오디오 스트리밍 엔진 ──
+// ── 오디오 스트리밍 엔진 (AudioWorklet 기반) ──
 let audioCtx        = null;
 let opusDecoder     = null;
 let audioEnabled    = false;
 let audioInited     = false;
-let jitterBuffer    = [];
-let nextPlayTime    = 0;
-const JITTER_MIN    = 12;   // 250ms at 20ms/frame
-const JITTER_MAX    = 50;   // 드롭 임계값
-let audioPlaying    = false;
+let workletNode     = null;
+
+// AudioWorklet 프로세서 코드 (오디오 스레드에서 실행)
+const WORKLET_SRC = `
+class PCMPlayerProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.ring = [];          // Float32Array 프레임 큐
+    this.current = null;     // 현재 재생 중인 프레임
+    this.offset = 0;         // 현재 프레임 내 오프셋
+    this.bufferLimit = 50;   // 최대 버퍼 프레임 수 (1초)
+    this.port.onmessage = (e) => {
+      if (e.data.type === 'audio') {
+        this.ring.push(e.data.pcm);
+        // 과적 시 오래된 프레임 드롭
+        if (this.ring.length > this.bufferLimit) {
+          this.ring.splice(0, this.ring.length - 12);
+        }
+      } else if (e.data.type === 'clear') {
+        this.ring = [];
+        this.current = null;
+        this.offset = 0;
+      }
+    };
+  }
+
+  process(inputs, outputs) {
+    const out = outputs[0][0];
+    let written = 0;
+
+    while (written < out.length) {
+      if (!this.current || this.offset >= this.current.length) {
+        if (this.ring.length === 0) {
+          // 버퍼 비었으면 무음
+          out.fill(0, written);
+          return true;
+        }
+        this.current = this.ring.shift();
+        this.offset = 0;
+      }
+      const avail = this.current.length - this.offset;
+      const need = out.length - written;
+      const n = Math.min(avail, need);
+      out.set(this.current.subarray(this.offset, this.offset + n), written);
+      this.offset += n;
+      written += n;
+    }
+    return true;
+  }
+}
+registerProcessor('pcm-player', PCMPlayerProcessor);
+`;
 
 async function audioToggle() {
   const btn = document.getElementById('audioBtn');
 
   if (!audioInited) {
-    // 첫 탭: AudioContext + Opus 디코더 초기화 (iOS 제스처 요건 충족)
+    // 첫 탭: AudioContext + Opus 디코더 + AudioWorklet 초기화
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+
+      // AudioWorklet 프로세서 등록 (Blob URL로 인라인)
+      const blob = new Blob([WORKLET_SRC], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      await audioCtx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+
+      // 단일 워클릿 노드 생성 → destination 연결 (세션 동안 유지)
+      workletNode = new AudioWorkletNode(audioCtx, 'pcm-player');
+      workletNode.connect(audioCtx.destination);
 
       // opus-decoder WASM 라이브러리 로드
       const { OpusDecoder } = await import('https://esm.sh/opus-decoder@0.7.7');
@@ -649,9 +708,8 @@ async function audioToggle() {
   } else {
     // 이후 탭: 재생/일시정지 토글
     audioEnabled = !audioEnabled;
-    if (!audioEnabled) {
-      jitterBuffer = [];
-      audioPlaying = false;
+    if (!audioEnabled && workletNode) {
+      workletNode.port.postMessage({ type: 'clear' });
     }
     updateAudioBtn();
     showToast(audioEnabled ? '오디오 재생' : '오디오 꺼짐');
@@ -665,74 +723,26 @@ function updateAudioBtn() {
 }
 
 function handleAudioFrame(data) {
-  if (!audioEnabled || !opusDecoder || !audioCtx) return;
+  if (!audioEnabled || !opusDecoder || !workletNode) return;
 
   try {
     const decoded = opusDecoder.decodeFrame(new Uint8Array(data));
     if (!decoded || !decoded.channelData || !decoded.channelData[0]) return;
 
-    const pcmFloat32 = decoded.channelData[0];
-    jitterBuffer.push(pcmFloat32);
-
-    // 버퍼 과적 시 오래된 프레임 드롭 + 리싱크
-    if (jitterBuffer.length > JITTER_MAX) {
-      jitterBuffer.splice(0, jitterBuffer.length - JITTER_MIN);
-      nextPlayTime = audioCtx.currentTime + 0.01;
-      audioPlaying = false;
-    }
-
-    // 버퍼 충분히 쌓이면 재생 시작
-    if (!audioPlaying && jitterBuffer.length >= JITTER_MIN) {
-      audioPlaying = true;
-      nextPlayTime = audioCtx.currentTime + 0.01;
-      drainBuffer();
-    } else if (audioPlaying) {
-      drainBuffer();
-    }
+    // WASM 뷰가 아닌 복사본을 워클릿으로 전달
+    const pcm = new Float32Array(decoded.channelData[0]);
+    workletNode.port.postMessage({ type: 'audio', pcm }, [pcm.buffer]);
   } catch (e) {
     // 디코딩 에러 무시 (단일 프레임 손실)
   }
 }
 
-function drainBuffer() {
-  if (!audioCtx || audioCtx.state === 'closed') return;
-
-  // AudioContext가 suspended되면 resume
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-
-  const now = audioCtx.currentTime;
-  // nextPlayTime이 너무 과거면 리싱크
-  if (nextPlayTime < now - 0.5) {
-    nextPlayTime = now + 0.01;
-  }
-
-  while (jitterBuffer.length > 0) {
-    const pcm = jitterBuffer.shift();
-    const buf = audioCtx.createBuffer(1, pcm.length, 16000);
-    buf.getChannelData(0).set(pcm);
-
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf;
-    src.connect(audioCtx.destination);
-    src.start(nextPlayTime);
-
-    nextPlayTime += pcm.length / 16000;
-  }
-}
-
 function resetAudioBuffer() {
-  jitterBuffer = [];
-  audioPlaying = false;
-  nextPlayTime = 0;
+  if (workletNode) workletNode.port.postMessage({ type: 'clear' });
 }
 
 function stopAudioPlayback() {
-  // 세션 종료 시 버퍼만 비움 (AudioContext는 유지)
-  jitterBuffer = [];
-  audioPlaying = false;
-  nextPlayTime = 0;
+  if (workletNode) workletNode.port.postMessage({ type: 'clear' });
 }
 
 // visibilitychange에서 AudioContext resume

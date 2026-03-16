@@ -21,6 +21,12 @@ AUDIO_SAMPLE_RATE = 16000
 AUDIO_CHANNELS = 1
 AUDIO_CHUNK_SIZE = 32000  # 1초 분량 (16kHz * 2bytes)
 
+# -- Audio Streaming (Opus) --
+OPUS_FRAME_DURATION_MS = 20
+OPUS_FRAME_SAMPLES = AUDIO_SAMPLE_RATE * OPUS_FRAME_DURATION_MS // 1000  # 320
+OPUS_FRAME_BYTES = OPUS_FRAME_SAMPLES * 2  # 640 bytes (int16 mono)
+OPUS_BITRATE = 24000  # 24kbps, 음성에 충분
+
 # 교회 키워드 부스팅 (카테고리별로 관리하여 유지보수 용이)
 _CUSTOM = "석담,석담교회"
 _THEOLOGY = "하나님,예수님,성령님,그리스도,여호와,임마누엘,메시아,보혈,십자가,부활,구원,영생,복음,은혜,축복,진리,언약,섭리"

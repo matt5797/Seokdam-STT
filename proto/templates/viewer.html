@@ -305,7 +305,7 @@
     <span class="cross">✝</span> 석담교회 말씀 이음
   </div>
 
-  <button class="icon-btn" onclick="audioToggle()" title="오디오 (준비 중)">🔊</button>
+  <button class="icon-btn" id="audioBtn" onclick="audioToggle()" title="오디오 듣기">🔇</button>
 
   <div class="status-pill">
     <span class="pill-dot" id="pillDot"></span>
@@ -337,6 +337,11 @@
     <button class="size-btn" id="btnFullscreen" onclick="setMode('fullscreen')" title="전체화면">⛶</button>
   </div>
 </div>
+
+<!-- 무음 오디오 (백그라운드 재생 유지용) -->
+<audio id="silentAudio" loop playsinline>
+  <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
+</audio>
 
 <!-- 토스트 -->
 <div class="toast" id="toast"></div>
@@ -456,14 +461,20 @@ function connect() {
     setPillState('running', '연결됨');
   };
 
+  ws.binaryType = 'arraybuffer';
   ws.onmessage = (evt) => {
     if (evt.data === 'pong') return;
-    try { handleMessage(JSON.parse(evt.data)); } catch (e) {}
+    if (typeof evt.data === 'string') {
+      try { handleMessage(JSON.parse(evt.data)); } catch (e) {}
+    } else {
+      handleAudioFrame(evt.data);  // Binary = Opus 오디오
+    }
   };
 
   ws.onclose = () => {
     setPillState('error', '재연결 중...');
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+    resetAudioBuffer();
     setTimeout(connect, reconnectDelay);
   };
 
@@ -478,6 +489,7 @@ function handleMessage(data) {
     case 'session_start':
       segments = [];
       setActiveLanguages(data.languages || []);
+      resetAudioBuffer();
       break;
 
     case 'status':
@@ -493,6 +505,7 @@ function handleMessage(data) {
         // stopped
         setPillState('', '대기 중');
         clearActiveLanguages();
+        stopAudioPlayback();
       }
       break;
 
@@ -579,8 +592,157 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 
-// ── 오디오 토글 (준비 중) ──
-function audioToggle() { showToast('예배 음성 스트리밍은 준비 중입니다'); }
+// ── 오디오 스트리밍 엔진 ──
+let audioCtx        = null;
+let opusDecoder     = null;
+let audioEnabled    = false;
+let audioInited     = false;
+let jitterBuffer    = [];
+let nextPlayTime    = 0;
+const JITTER_MIN    = 12;   // 250ms at 20ms/frame
+const JITTER_MAX    = 50;   // 드롭 임계값
+let audioPlaying    = false;
+
+async function audioToggle() {
+  const btn = document.getElementById('audioBtn');
+
+  if (!audioInited) {
+    // 첫 탭: AudioContext + Opus 디코더 초기화 (iOS 제스처 요건 충족)
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+
+      // opus-decoder WASM 라이브러리 로드
+      const { OpusDecoder } = await import('https://esm.sh/opus-decoder@0.7.7');
+      opusDecoder = new OpusDecoder({ sampleRate: 16000, channels: 1 });
+      await opusDecoder.ready;
+
+      audioInited = true;
+      audioEnabled = true;
+
+      // 무음 오디오 재생 (백그라운드 유지)
+      const silentAudio = document.getElementById('silentAudio');
+      silentAudio.play().catch(() => {});
+
+      // Media Session API
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: '석담교회 말씀 이음',
+          artist: '실시간 예배 음성',
+        });
+        navigator.mediaSession.setActionHandler('play', () => {
+          audioEnabled = true;
+          updateAudioBtn();
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          audioEnabled = false;
+          updateAudioBtn();
+        });
+      }
+
+      updateAudioBtn();
+      showToast('오디오 재생 시작');
+    } catch (e) {
+      console.error('오디오 초기화 실패:', e);
+      showToast('오디오를 시작할 수 없습니다');
+      return;
+    }
+  } else {
+    // 이후 탭: 재생/일시정지 토글
+    audioEnabled = !audioEnabled;
+    if (!audioEnabled) {
+      jitterBuffer = [];
+      audioPlaying = false;
+    }
+    updateAudioBtn();
+    showToast(audioEnabled ? '오디오 재생' : '오디오 꺼짐');
+  }
+}
+
+function updateAudioBtn() {
+  const btn = document.getElementById('audioBtn');
+  btn.textContent = audioEnabled ? '🔊' : '🔇';
+  btn.classList.toggle('active', audioEnabled);
+}
+
+function handleAudioFrame(data) {
+  if (!audioEnabled || !opusDecoder || !audioCtx) return;
+
+  try {
+    const decoded = opusDecoder.decodeFrame(new Uint8Array(data));
+    if (!decoded || !decoded.channelData || !decoded.channelData[0]) return;
+
+    const pcmFloat32 = decoded.channelData[0];
+    jitterBuffer.push(pcmFloat32);
+
+    // 버퍼 과적 시 오래된 프레임 드롭 + 리싱크
+    if (jitterBuffer.length > JITTER_MAX) {
+      jitterBuffer.splice(0, jitterBuffer.length - JITTER_MIN);
+      nextPlayTime = audioCtx.currentTime + 0.01;
+      audioPlaying = false;
+    }
+
+    // 버퍼 충분히 쌓이면 재생 시작
+    if (!audioPlaying && jitterBuffer.length >= JITTER_MIN) {
+      audioPlaying = true;
+      nextPlayTime = audioCtx.currentTime + 0.01;
+      drainBuffer();
+    } else if (audioPlaying) {
+      drainBuffer();
+    }
+  } catch (e) {
+    // 디코딩 에러 무시 (단일 프레임 손실)
+  }
+}
+
+function drainBuffer() {
+  if (!audioCtx || audioCtx.state === 'closed') return;
+
+  // AudioContext가 suspended되면 resume
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  const now = audioCtx.currentTime;
+  // nextPlayTime이 너무 과거면 리싱크
+  if (nextPlayTime < now - 0.5) {
+    nextPlayTime = now + 0.01;
+  }
+
+  while (jitterBuffer.length > 0) {
+    const pcm = jitterBuffer.shift();
+    const buf = audioCtx.createBuffer(1, pcm.length, 16000);
+    buf.getChannelData(0).set(pcm);
+
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(nextPlayTime);
+
+    nextPlayTime += pcm.length / 16000;
+  }
+}
+
+function resetAudioBuffer() {
+  jitterBuffer = [];
+  audioPlaying = false;
+  nextPlayTime = 0;
+}
+
+function stopAudioPlayback() {
+  // 세션 종료 시 버퍼만 비움 (AudioContext는 유지)
+  jitterBuffer = [];
+  audioPlaying = false;
+  nextPlayTime = 0;
+}
+
+// visibilitychange에서 AudioContext resume
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }
+});
 
 // ── 상태 pill ──
 function setPillState(state, text) {

@@ -18,6 +18,7 @@ class ConnectionManager:
         self._replay_buffer: list[dict] = []
         self._is_streaming: bool = False
         self._active_languages: list[str] = []
+        self._audio_streaming: bool = False
 
     # ── 관리자 ──
 
@@ -82,6 +83,40 @@ class ConnectionManager:
                 await ws.send_json(data)
             except Exception:
                 dead.add(ws)
+
+        if dead:
+            async with self._lock:
+                self._viewers -= dead
+            await self._send_viewer_count_to_admin()
+
+    def set_audio_streaming(self, enabled: bool):
+        """오디오 스트리밍 상태 설정"""
+        self._audio_streaming = enabled
+
+    @property
+    def audio_streaming(self) -> bool:
+        return self._audio_streaming
+
+    async def broadcast_audio(self, data: bytes):
+        """모든 뷰어에게 바이너리 오디오 프레임 브로드캐스트 (리플레이 없음)"""
+        if not self._audio_streaming:
+            return
+
+        async with self._lock:
+            viewers = set(self._viewers)
+
+        if not viewers:
+            return
+
+        dead: set[WebSocket] = set()
+
+        async def _send(ws):
+            try:
+                await ws.send_bytes(data)
+            except Exception:
+                dead.add(ws)
+
+        await asyncio.gather(*(_send(ws) for ws in viewers))
 
         if dead:
             async with self._lock:

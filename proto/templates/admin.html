@@ -414,6 +414,15 @@
         <select id="modelSelect"></select>
       </div>
 
+      <!-- 음성 스트리밍 -->
+      <div class="control-row">
+        <label>음성</label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="audioStreamToggle" checked onchange="toggleAudioStreaming()">
+          뷰어에게 음성 스트리밍
+        </label>
+      </div>
+
       <!-- 버튼 -->
       <div class="btn-row">
         <button class="btn btn-start" id="btnStart" onclick="startSession()">● 시작</button>
@@ -458,6 +467,15 @@
         <div class="stat-label">뷰어 접속 수</div>
         <div class="stat-value accent" id="viewerCount">0</div>
         <div class="stat-sub">명 접속 중</div>
+      </div>
+
+      <!-- 음성 스트리밍 상태 -->
+      <div class="stat-card">
+        <div class="stat-label">음성 스트리밍</div>
+        <div class="stt-indicator">
+          <span class="status-dot dot-ready" id="audioDot"></span>
+          <span id="audioStatusMsg">대기 중</span>
+        </div>
       </div>
 
       <!-- 최근 신뢰도 -->
@@ -588,6 +606,9 @@ function handleMessage(data) {
     case 'viewer_count':
       document.getElementById('viewerCount').textContent = data.count;
       break;
+    case 'audio_status':
+      updateAudioStatus(data.enabled);
+      break;
   }
 }
 
@@ -625,12 +646,15 @@ function startSession() {
 
   isRunning = true;
   updateButtons();
+  // 음성 스트리밍 상태 반영
+  updateAudioStatus(document.getElementById('audioStreamToggle').checked);
 }
 
 function stopSession() {
   ws.send(JSON.stringify({ action: 'stop' }));
   isRunning = false;
   updateButtons();
+  updateAudioStatus(false);
 }
 
 function updateButtons() {
@@ -736,6 +760,22 @@ function updateStatus(state, message) {
   const msg = document.getElementById('statusMsg');
   dot.className = `status-dot dot-${state}`;
   msg.textContent = message;
+}
+
+// ── 음성 스트리밍 토글 ──
+function toggleAudioStreaming() {
+  const enabled = document.getElementById('audioStreamToggle').checked;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: 'toggle_audio', enabled }));
+  }
+}
+
+function updateAudioStatus(enabled) {
+  const dot = document.getElementById('audioDot');
+  const msg = document.getElementById('audioStatusMsg');
+  dot.className = `status-dot ${enabled ? 'dot-running' : 'dot-stopped'}`;
+  msg.textContent = enabled ? '송출 중' : '꺼짐';
+  document.getElementById('audioStreamToggle').checked = enabled;
 }
 
 // ── 유틸 ──

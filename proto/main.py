@@ -32,6 +32,13 @@ if SCRIPT_DIR not in sys.path:
 
 import config
 
+# ── opus.dll 경로 등록 (opuslib의 find_library가 찾을 수 있도록) ──
+_opus_dll_path = os.path.join(SCRIPT_DIR, "opus.dll")
+if os.path.exists(_opus_dll_path):
+    os.environ["PATH"] = SCRIPT_DIR + os.pathsep + os.environ.get("PATH", "")
+    if hasattr(os, "add_dll_directory"):
+        os.add_dll_directory(SCRIPT_DIR)
+
 
 # ══════════════════════════════════════════════
 # 1. Proto 자동 컴파일
@@ -356,14 +363,17 @@ def get_microphones():
 class SubtitleSession:
     """하나의 자막 세션 (시작~중지)을 관리"""
 
-    def __init__(self, broadcast_fn, admin_ws, languages, model, mic_index):
+    def __init__(self, broadcast_fn, admin_ws, languages, model, mic_index,
+                 broadcast_fn_audio=None):
         self.broadcast_fn = broadcast_fn
+        self.broadcast_fn_audio = broadcast_fn_audio
         self.admin_ws = admin_ws
         self.languages = languages
         self.model = model
         self.mic_index = mic_index if mic_index >= 0 else None
 
         self.audio_queue = queue.Queue()
+        self.audio_broadcast_queue = asyncio.Queue()
         self.stt_queue = asyncio.Queue()
         self.stop_event = threading.Event()
         self.loop = None
@@ -378,6 +388,20 @@ class SubtitleSession:
         self.CONTEXT_SIZE = 3  # 앞선 3문장을 참고로 전달
 
         self.translator = GeminiTranslator(model=model)
+
+        # Opus 인코더 (opuslib 설치 시에만 활성화)
+        self._opus_encoder = None
+        try:
+            import opuslib
+            self._opus_encoder = opuslib.Encoder(
+                config.AUDIO_SAMPLE_RATE, 1, opuslib.APPLICATION_VOIP
+            )
+            self._opus_encoder.bitrate = config.OPUS_BITRATE
+            print("[*] Opus 인코더 초기화 완료")
+        except ImportError:
+            print("[!] opuslib 미설치 — 오디오 스트리밍 비활성")
+        except Exception as e:
+            print(f"[!] Opus 인코더 초기화 실패: {e} — 오디오 스트리밍 비활성")
 
     async def start(self):
         """세션 시작: 마이크 캡처 → STT → 번역"""
@@ -402,12 +426,20 @@ class SubtitleSession:
             "message": "CLOVA STT 연결 중...",
         })
 
-        # STT 결과 처리 루프
-        await self._process_stt_results()
+        # STT 결과 처리 + Opus 브로드캐스트 병렬 실행
+        tasks = [self._process_stt_results()]
+        if self._opus_encoder and self.broadcast_fn_audio:
+            tasks.append(self._opus_broadcast_worker())
+        await asyncio.gather(*tasks)
 
     async def stop(self):
         """세션 중지 및 리소스 정리"""
         self.stop_event.set()
+        # Opus 워커 종료 센티넬
+        try:
+            self.audio_broadcast_queue.put_nowait(None)
+        except Exception:
+            pass
 
         if self.audio_stream:
             try:
@@ -442,9 +474,46 @@ class SubtitleSession:
         self.audio_stream.start()
 
     def _audio_callback(self, indata, frames, time_info, status):
-        """오디오 콜백 → 청크를 큐에 적재"""
+        """오디오 콜백 → STT 큐 + 오디오 브로드캐스트 큐에 적재"""
         if not self.stop_event.is_set():
-            self.audio_queue.put(bytes(indata))
+            chunk = bytes(indata)
+            self.audio_queue.put(chunk)
+            # Opus 브로드캐스트용 (asyncio 큐 — threadsafe)
+            if self._opus_encoder and self.loop:
+                self.loop.call_soon_threadsafe(
+                    self.audio_broadcast_queue.put_nowait, chunk
+                )
+
+    # ── Opus 브로드캐스트 워커 ──
+
+    async def _opus_broadcast_worker(self):
+        """audio_broadcast_queue에서 PCM 청크를 받아 Opus 인코딩 후 브로드캐스트"""
+        frame_bytes = config.OPUS_FRAME_BYTES
+        frame_samples = config.OPUS_FRAME_SAMPLES
+        frames_sent = 0
+
+        while True:
+            chunk = await self.audio_broadcast_queue.get()
+            if chunk is None:  # 센티넬 — 종료
+                break
+
+            # 1초 PCM 청크를 20ms 프레임으로 분할하여 Opus 인코딩
+            offset = 0
+            while offset + frame_bytes <= len(chunk):
+                pcm_frame = chunk[offset:offset + frame_bytes]
+                offset += frame_bytes
+                try:
+                    opus_data = self._opus_encoder.encode(pcm_frame, frame_samples)
+                    await self.broadcast_fn_audio(opus_data)
+                    frames_sent += 1
+                except Exception as e:
+                    if frames_sent == 0:
+                        print(f"[!] Opus 인코딩 오류: {e}")
+                    break
+
+            # 주기적 통계 (10초마다)
+            if frames_sent > 0 and frames_sent % 500 == 0:
+                print(f"[*] Opus: {frames_sent}프레임 전송됨")
 
     # ── gRPC 스트리밍 (별도 스레드) ──
 
@@ -751,12 +820,15 @@ async def ws_admin(websocket: WebSocket):
                 # 뷰어에게 새 세션 시작 알림 → 클라이언트 세그먼트 초기화
                 await manager.broadcast_to_viewers({"type": "session_start", "languages": languages})
 
+                manager.set_audio_streaming(True)
+
                 active_session = SubtitleSession(
                     broadcast_fn=manager.broadcast_to_viewers,
                     admin_ws=websocket,
                     languages=languages,
                     model=model,
                     mic_index=mic_index,
+                    broadcast_fn_audio=manager.broadcast_audio,
                 )
                 asyncio.create_task(active_session.start())
 
@@ -765,6 +837,15 @@ async def ws_admin(websocket: WebSocket):
                     await active_session.stop()
                     active_session = None
                 manager.set_streaming_state(False, [])
+                manager.set_audio_streaming(False)
+
+            elif action == "toggle_audio":
+                enabled = msg.get("enabled", True)
+                manager.set_audio_streaming(enabled)
+                await websocket.send_json({
+                    "type": "audio_status",
+                    "enabled": manager.audio_streaming,
+                })
 
     except WebSocketDisconnect:
         pass
@@ -775,6 +856,7 @@ async def ws_admin(websocket: WebSocket):
             await active_session.stop()
             active_session = None
         manager.set_streaming_state(False, [])
+        manager.set_audio_streaming(False)
         await manager.disconnect_admin(websocket)
 
 

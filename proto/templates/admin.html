@@ -5,340 +5,379 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>석담교회 말씀 이음 — 관리자</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap');
 
   :root {
-    --bg:           #FAF6F0;
-    --bg-warm:      #F4EDE4;
+    /* Color Palette - Professional yet warm */
+    --bg-main:      #F4F1ED;
     --bg-card:      #FFFFFF;
-    --bg-header:    #F0E8DD;
-    --border:       #E0D5C7;
-    --border-light: #EBE3D8;
+    --bg-header:    #FFFFFF;
+    
+    --border:       #E2DCD3;
+    --border-focus: #8B2635;
 
-    --text:         #3D2E1F;
-    --text-light:   #7A6B5B;
-    --text-muted:   #A89882;
+    --text-main:    #2C241B;
+    --text-sub:     #6B6054;
+    --text-muted:   #9E948A;
 
-    --accent:       #8B2635;
-    --accent-light: #B8455A;
-    --gold:         #B8963E;
-    --gold-soft:    #D4B96A;
-
-    --en-color:     #2E5D8A;
-    --ne-color:     #5B7A3A;
-    --pending:      #C4B8A8;
-
-    --success:      #4A8B3F;
-    --error:        #B8363B;
-    --warning:      #C4922A;
+    --primary:      #8B2635;
+    --primary-hover:#A33041;
+    --secondary:    #B8963E;
+    
+    --success:      #2E7D32;
+    --success-bg:   #E8F5E9;
+    --error:        #C62828;
+    --error-bg:     #FFEBEE;
+    --warning:      #F57C00;
+    
+    --shadow-sm:    0 2px 4px rgba(44, 36, 27, 0.04);
+    --shadow-md:    0 4px 12px rgba(44, 36, 27, 0.08);
+    
+    --radius-md:    12px;
+    --radius-lg:    16px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-main);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
   }
 
-  /* ── 헤더 ── */
+  /* ── 1. 헤더 (Header) ── */
   .header {
     background: var(--bg-header);
-    border-bottom: 2px solid var(--accent);
-    padding: 14px 24px;
-    box-shadow: 0 2px 8px rgba(139, 38, 53, 0.1);
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   .header h1 {
     font-family: 'Noto Serif KR', serif;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--primary);
     display: flex;
     align-items: center;
     gap: 8px;
     letter-spacing: -0.02em;
   }
 
-  .header h1 .cross { color: var(--gold); font-size: 20px; }
   .admin-badge {
-    font-size: 11px;
-    background: var(--accent);
+    font-size: 13px;
+    background: var(--text-main);
     color: #fff;
-    padding: 2px 8px;
-    border-radius: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
     font-weight: 600;
-    letter-spacing: 0.05em;
   }
 
   .viewer-link-btn {
-    margin-left: auto;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 7px;
+    gap: 8px;
+    padding: 10px 20px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
     background: var(--bg-card);
-    color: var(--text-light);
-    font-size: 13px;
+    color: var(--text-main);
+    font-size: 15px;
     font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
     text-decoration: none;
-    transition: all 0.15s;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
   }
   .viewer-link-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: var(--bg-warm);
+    border-color: var(--primary);
+    color: var(--primary);
+    background: #FFF9FA;
   }
 
-  /* ── 메인 레이아웃 (2컬럼) ── */
-  .main-layout {
-    display: flex;
+  /* ── 2. 메인 레이아웃 (Dashboard Grid) ── */
+  .dashboard {
     flex: 1;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    padding: 24px 32px;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+    height: calc(100vh - 72px - 40px);
+  }
+
+  .card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
 
-  /* ── 좌: 제어 패널 ── */
-  .control-panel {
-    width: 60%;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid var(--border);
-  }
-
-  .panel-header {
-    background: var(--bg-warm);
+  .card-header {
+    padding: 16px 24px;
     border-bottom: 1px solid var(--border);
-    padding: 12px 20px;
-    font-size: 13px;
+    background: #FAFAFA;
+    font-size: 16px;
     font-weight: 700;
-    color: var(--text-light);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .controls-body {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .control-row {
+    color: var(--text-main);
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    justify-content: space-between;
   }
 
-  .control-row label {
-    font-size: 14px;
-    color: var(--text-light);
+  .card-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  /* ── 3. 좌측: 제어 패널 (Control Panel) ── */
+  .control-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .control-label {
+    font-size: 15px;
     font-weight: 600;
-    min-width: 54px;
+    color: var(--text-sub);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   select {
+    width: 100%;
     background: var(--bg-card);
-    color: var(--text);
+    color: var(--text-main);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 12px;
-    font-size: 14px;
-    font-family: inherit;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.2s;
-    flex: 1;
-    min-width: 160px;
-  }
-  select:focus { border-color: var(--accent); }
-  select:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .checkbox-group {
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-  }
-
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    cursor: pointer;
-    user-select: none;
-    color: var(--text);
-  }
-
-  .checkbox-label input[type="checkbox"] {
-    accent-color: var(--accent);
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-  }
-
-  .btn-row {
-    display: flex;
-    gap: 10px;
-    margin-top: 4px;
-  }
-
-  .btn {
-    padding: 10px 28px;
-    border: none;
-    border-radius: 7px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.2s;
-    letter-spacing: 0.02em;
-  }
-  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-  .btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
-
-  .btn-start { background: var(--success); color: #fff; }
-  .btn-stop  { background: var(--error);   color: #fff; }
-
-  /* ── 자막 모니터 ── */
-  .subtitle-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 16px 20px;
-    gap: 12px;
-    overflow-y: auto;
-    min-height: 200px;
-  }
-
-  .segment {
-    background: var(--bg-card);
-    border-radius: 8px;
-    padding: 14px 18px;
-    border-left: 4px solid var(--gold-soft);
-    box-shadow: 0 1px 4px rgba(60, 40, 20, 0.06);
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .seg-ko {
-    font-family: 'Noto Serif KR', serif;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.6;
-    margin-bottom: 6px;
-  }
-
-  .seg-translation {
-    font-size: 17px;
-    line-height: 1.5;
-    margin-top: 4px;
-    padding-left: 2px;
-  }
-  .seg-translation.en { color: var(--en-color); }
-  .seg-translation.ne { color: var(--ne-color); }
-  .seg-translation.pending { color: var(--pending); font-style: italic; }
-
-  .seg-meta {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 6px;
-    padding-top: 5px;
-    border-top: 1px solid var(--border-light);
-  }
-
-  .refined-badge { font-size: 12px; color: var(--gold); cursor: help; }
-
-  .empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 16px;
-    margin: auto;
-    line-height: 1.8;
-  }
-  .empty-state .cross-icon {
-    font-size: 36px;
-    display: block;
-    margin-bottom: 8px;
-    color: var(--gold-soft);
-  }
-
-  /* ── 우: 상태 패널 ── */
-  .status-panel {
-    width: 40%;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-warm);
-  }
-
-  .stat-grid {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .stat-card {
-    background: var(--bg-card);
     border-radius: 8px;
     padding: 14px 16px;
-    border: 1px solid var(--border);
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B6054' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 16px;
+  }
+  select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 38, 53, 0.1); }
+  select:disabled { background: #F5F5F5; color: var(--text-muted); cursor: not-allowed; }
+
+  .chip-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 
-  .stat-label {
-    font-size: 11px;
+  .lang-chip {
+    display: block;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .lang-chip input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .chip-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-sub);
+    background: var(--bg-card);
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .lang-chip input:checked ~ .chip-content {
+    border-color: var(--primary);
+    background: #FFF9FA;
+    color: var(--primary);
+  }
+  .lang-chip input:disabled ~ .chip-content {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .toggle-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #FAFAFA;
+  }
+  
+  .toggle-switch-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #CCC;
+    transition: .3s;
+    border-radius: 34px;
+  }
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+  }
+  input:checked + .slider { background-color: var(--success); }
+  input:checked + .slider:before { transform: translateX(24px); }
+  input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
+
+  .action-buttons {
+    margin-top: auto;
+    display: flex;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-action {
+    flex: 1;
+    padding: 18px 0;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 18px;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-start {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(139, 38, 53, 0.3);
+  }
+  .btn-start:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-2px); }
+  
+  .btn-stop {
+    background: var(--bg-main);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+  }
+  .btn-stop:hover:not(:disabled) { background: #EBEBEB; }
+  
+  .btn-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* ── 4. 우측: 통계 및 모니터 (Stats & Monitor) ── */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+
+  .stat-box {
+    background: var(--bg-card);
+    padding: 16px 18px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .stat-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-sub);
     margin-bottom: 6px;
   }
 
   .stat-value {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-  }
-
-  .stat-value.accent { color: var(--accent); }
-  .stat-value.success { color: var(--success); }
-
-  .stat-sub {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 4px;
-  }
-
-  /* STT 상태 표시기 */
-  .stt-indicator {
+    color: var(--text-main);
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
+    gap: 4px;
+    white-space: nowrap;
   }
+  .stat-value small { font-size: 14px; color: var(--text-muted); font-weight: 500; }
 
+  .text-primary { color: var(--primary); }
+  .text-success { color: var(--success); }
+
+  /* 원본 상태 점 스타일 통합 */
   .status-dot {
     display: inline-block;
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     flex-shrink: 0;
+    margin-right: 6px;
   }
   .dot-ready      { background: var(--text-muted); }
   .dot-connecting { background: var(--warning); animation: pulse 1s infinite; }
@@ -346,31 +385,115 @@
   .dot-error      { background: var(--error); }
   .dot-stopped    { background: var(--text-muted); }
 
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+  }
+
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.3; }
   }
 
-  /* 뷰어 수 카드 */
-  .viewer-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-top: 4px;
+  .monitor-card {
+    flex: 1;
   }
 
-  /* ── 하단 상태바 ── */
+  .monitor-body {
+    background: var(--bg-card);
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .segment {
+    background: var(--bg-main);
+    border-radius: 12px;
+    padding: 20px;
+    border-left: 5px solid var(--secondary);
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .seg-ko {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  .seg-translation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .seg-translation {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .seg-translation.pending { color: var(--text-muted); font-style: italic; }
+
+  .refined-badge { font-size: 14px; color: var(--secondary); cursor: help; margin-right: 4px; }
+
+  .seg-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 12px;
+    text-align: right;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .empty-state .icon {
+    font-size: 48px;
+    color: var(--border);
+  }
+  .empty-state p {
+    font-size: 18px;
+    font-weight: 500;
+  }
+
+  /* ── 5. 하단 상태바 (Status Bar) ── */
   .status-bar {
     background: var(--bg-header);
     border-top: 1px solid var(--border);
-    padding: 8px 20px;
+    padding: 10px 32px;
     display: flex;
-    gap: 20px;
-    font-size: 12px;
-    color: var(--text-light);
-    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-sub);
+  }
+
+  @media (max-width: 1200px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 1024px) {
+    .dashboard { grid-template-columns: 1fr; height: auto; overflow-y: auto; }
+    .monitor-card { min-height: 500px; }
   }
 </style>
 </head>
@@ -378,113 +501,122 @@
 
 <!-- 헤더 -->
 <div class="header">
-  <h1>
-    <span class="cross">✝</span>
-    석담교회 말씀 이음
-    <span class="admin-badge">관리자</span>
-  </h1>
-  <a class="viewer-link-btn" href="/" target="_blank" title="뷰어 페이지 열기">
-    📺 뷰어 열기
+  <div class="header-left">
+    <h1><span style="color: var(--secondary);">✝</span> 석담교회 말씀 이음</h1>
+    <span class="admin-badge">관리자 시스템</span>
+  </div>
+  <a class="viewer-link-btn" href="/" target="_blank" title="성도들이 보는 화면을 새 창으로 엽니다">
+    📺 성도용 화면 보기
   </a>
 </div>
 
-<!-- 메인 2컬럼 레이아웃 -->
-<div class="main-layout">
+<!-- 메인 대시보드 -->
+<div class="dashboard">
 
-  <!-- 좌: 제어 패널 + 자막 모니터 -->
-  <div class="control-panel">
-    <div class="panel-header">제어 패널</div>
-
-    <div class="controls-body">
-      <!-- 마이크 -->
-      <div class="control-row">
-        <label>마이크</label>
+  <!-- 좌측: 제어 패널 -->
+  <div class="card">
+    <div class="card-header">방송 제어부</div>
+    <div class="card-body">
+      
+      <!-- 마이크 선택 -->
+      <div class="control-section">
+        <label class="control-label">🎤 입력 마이크 선택</label>
         <select id="micSelect"><option value="-1">로딩 중...</option></select>
       </div>
 
-      <!-- 번역 언어 -->
-      <div class="control-row">
-        <label>번역</label>
-        <div class="checkbox-group" id="langCheckboxes"></div>
-      </div>
-
-      <!-- 모델 -->
-      <div class="control-row">
-        <label>모델</label>
+      <!-- 모델 선택 -->
+      <div class="control-section">
+        <label class="control-label">⚙️ 인식 모델</label>
         <select id="modelSelect"></select>
       </div>
 
-      <!-- 음성 스트리밍 -->
-      <div class="control-row">
-        <label>음성</label>
-        <label class="checkbox-label">
-          <input type="checkbox" id="audioStreamToggle" checked onchange="toggleAudioStreaming()">
-          뷰어에게 음성 스트리밍
+      <!-- 번역 언어 선택 (칩 스타일) -->
+      <div class="control-section">
+        <label class="control-label">🌐 번역할 언어 (다중 선택 가능)</label>
+        <div class="chip-group" id="langCheckboxes"></div>
+      </div>
+
+      <!-- 음성 송출 토글 -->
+      <div class="control-section" style="margin-top: 8px;">
+        <label class="toggle-switch">
+          <span class="toggle-switch-text">🔊 성도용 화면으로 음성 송출</span>
+          <div class="switch">
+            <input type="checkbox" id="audioStreamToggle" checked onchange="toggleAudioStreaming()">
+            <span class="slider"></span>
+          </div>
         </label>
       </div>
 
-      <!-- 버튼 -->
-      <div class="btn-row">
-        <button class="btn btn-start" id="btnStart" onclick="startSession()">● 시작</button>
-        <button class="btn btn-stop"  id="btnStop"  onclick="stopSession()" disabled>■ 중지</button>
+      <!-- 대형 시작/중지 버튼 -->
+      <div class="action-buttons">
+        <button class="btn-action btn-start" id="btnStart" onclick="startSession()">▶ 방송 시작</button>
+        <button class="btn-action btn-stop" id="btnStop" onclick="stopSession()" disabled>■ 정지</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 우측: 모니터 및 통계 -->
+  <div class="right-panel">
+    
+    <!-- 통계 위젯 -->
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-title">STT 상태</div>
+        <div class="stat-value">
+          <div class="live-indicator">
+            <span class="status-dot dot-ready" id="statusDot"></span>
+            <span id="statusMsg">대기 중</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="stat-box">
+        <div class="stat-title">음성 송출</div>
+        <div class="stat-value">
+          <div class="live-indicator">
+            <span class="status-dot dot-ready" id="audioDot"></span>
+            <span id="audioStatusMsg">대기 중</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-title">접속 중인 성도</div>
+        <div class="stat-value text-primary">
+          <span id="viewerCount">0</span><small>명</small>
+        </div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-title">음성 인식률(신뢰도)</div>
+        <div class="stat-value text-success">
+          <span id="statConfidence">—</span>
+        </div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-title">번역 평균 지연시간</div>
+        <div class="stat-value">
+          <span id="avgLatency">—</span><small>ms</small>
+        </div>
       </div>
     </div>
 
     <!-- 자막 모니터 -->
-    <div class="panel-header">자막 모니터</div>
-    <div class="subtitle-area" id="subtitleArea">
-      <div class="empty-state" id="emptyState">
-        <span class="cross-icon">✝</span>
-        시작 버튼을 눌러 자막을 시작하세요
+    <div class="card monitor-card">
+      <div class="card-header">
+        실시간 자막 모니터
+        <span style="font-size: 13px; font-weight: normal; color: var(--text-muted);">가장 최근 말씀이 아래에 표시됩니다.</span>
       </div>
-    </div>
-  </div>
-
-  <!-- 우: 상태 패널 -->
-  <div class="status-panel">
-    <div class="panel-header">상태 패널</div>
-
-    <div class="stat-grid">
-
-      <!-- STT 상태 -->
-      <div class="stat-card">
-        <div class="stat-label">STT 상태</div>
-        <div class="stt-indicator">
-          <span class="status-dot dot-ready" id="statusDot"></span>
-          <span id="statusMsg">대기 중</span>
+      <div class="card-body monitor-body" id="subtitleArea">
+        <div class="empty-state" id="emptyState">
+          <div class="icon">💬</div>
+          <p>좌측의 <b>[방송 시작]</b> 버튼을 누르면 자막이 표시됩니다.</p>
         </div>
       </div>
-
-      <!-- 번역 평균 지연 -->
-      <div class="stat-card">
-        <div class="stat-label">번역 평균 지연</div>
-        <div class="stat-value" id="avgLatency">—</div>
-        <div class="stat-sub">ms</div>
-      </div>
-
-      <!-- 뷰어 접속 수 -->
-      <div class="stat-card">
-        <div class="stat-label">뷰어 접속 수</div>
-        <div class="stat-value accent" id="viewerCount">0</div>
-        <div class="stat-sub">명 접속 중</div>
-      </div>
-
-      <!-- 음성 스트리밍 상태 -->
-      <div class="stat-card">
-        <div class="stat-label">음성 스트리밍</div>
-        <div class="stt-indicator">
-          <span class="status-dot dot-ready" id="audioDot"></span>
-          <span id="audioStatusMsg">대기 중</span>
-        </div>
-      </div>
-
-      <!-- 최근 신뢰도 -->
-      <div class="stat-card">
-        <div class="stat-label">최근 STT 신뢰도</div>
-        <div class="stat-value success" id="statConfidence">—</div>
-      </div>
-
     </div>
+
   </div>
 
 </div>
@@ -532,16 +664,22 @@ async function loadConfig() {
 
 function initLanguageCheckboxes() {
   const container = document.getElementById('langCheckboxes');
+  container.innerHTML = '';
   for (const [code, cfg] of Object.entries(LANGUAGES)) {
     const label = document.createElement('label');
-    label.className = 'checkbox-label';
-    label.innerHTML = `<input type="checkbox" value="${code}" checked> ${cfg.flag} ${cfg.name}`;
+    label.className = 'lang-chip';
+    // 새 디자인인 칩 구조로 적용하되 기존 value는 그대로
+    label.innerHTML = `
+      <input type="checkbox" value="${code}" checked>
+      <span class="chip-content">${cfg.flag} ${cfg.name}</span>
+    `;
     container.appendChild(label);
   }
 }
 
 function initModelSelect() {
   const sel = document.getElementById('modelSelect');
+  sel.innerHTML = '';
   MODELS.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m;
@@ -556,7 +694,7 @@ function getSelectedLanguages() {
   return Array.from(checks).map(c => c.value);
 }
 
-// ── WebSocket ──
+// ── WebSocket (원본 연결 로직) ──
 function connectWebSocket() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}/ws/admin`);
@@ -711,7 +849,7 @@ function renderSubtitles() {
   const empty = document.getElementById('emptyState');
 
   if (segments.length === 0) {
-    empty.style.display = '';
+    empty.style.display = 'flex';
     area.querySelectorAll('.segment').forEach(el => el.remove());
     return;
   }
@@ -723,23 +861,28 @@ function renderSubtitles() {
     const div = document.createElement('div');
     div.className = 'segment';
 
+    // 원본의 수정된 자막(refined) 표시 로직 유지 (CSS는 새 버전에 맞춰 최적화)
     const koLabel = seg.ko_refined
       ? `<span class="refined-badge" title="원본: ${escapeAttr(seg.ko_raw)}">✎</span> `
       : '';
     let html = `<div class="seg-ko">${koLabel}${escapeHtml(seg.ko)}</div>`;
-
+    
+    html += `<div class="seg-translation-list">`;
     selectedLanguages.forEach(lang => {
       const tr = seg.translations[lang];
       const cfg = LANGUAGES[lang];
       if (!cfg) return;
+      
       if (tr) {
         const cls = tr.error ? 'pending' : lang;
-        html += `<div class="seg-translation ${cls}">${cfg.flag} ${escapeHtml(tr.text)}</div>`;
+        html += `<div class="seg-translation ${cls}"><span>${cfg.flag}</span> <span>${escapeHtml(tr.text)}</span></div>`;
       } else {
-        html += `<div class="seg-translation pending">${cfg.flag} 번역 중...</div>`;
+        html += `<div class="seg-translation pending"><span>${cfg.flag}</span> <span>번역 중...</span></div>`;
       }
     });
+    html += `</div>`;
 
+    // 메타데이터 표시 (원본 로직 유지)
     const latencies = Object.values(seg.translations)
       .filter(t => t.latency)
       .map(t => `${Math.round(t.latency)}ms`);
@@ -758,8 +901,8 @@ function renderSubtitles() {
 function updateStatus(state, message) {
   const dot = document.getElementById('statusDot');
   const msg = document.getElementById('statusMsg');
-  dot.className = `status-dot dot-${state}`;
-  msg.textContent = message;
+  if(dot) dot.className = `status-dot dot-${state}`;
+  if(msg) msg.textContent = message;
 }
 
 // ── 음성 스트리밍 토글 ──
@@ -773,8 +916,8 @@ function toggleAudioStreaming() {
 function updateAudioStatus(enabled) {
   const dot = document.getElementById('audioDot');
   const msg = document.getElementById('audioStatusMsg');
-  dot.className = `status-dot ${enabled ? 'dot-running' : 'dot-stopped'}`;
-  msg.textContent = enabled ? '송출 중' : '꺼짐';
+  if(dot) dot.className = `status-dot ${enabled ? 'dot-running' : 'dot-stopped'}`;
+  if(msg) msg.textContent = enabled ? '송출 중' : '꺼짐';
   document.getElementById('audioStreamToggle').checked = enabled;
 }
 

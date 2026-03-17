@@ -86,7 +86,13 @@
     font-weight: 600;
   }
 
-  .viewer-link-btn {
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .viewer-link-btn, .qr-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -100,11 +106,87 @@
     text-decoration: none;
     transition: all 0.2s;
     box-shadow: var(--shadow-sm);
+    cursor: pointer;
   }
-  .viewer-link-btn:hover {
+  .viewer-link-btn:hover, .qr-btn:hover {
     border-color: var(--primary);
     color: var(--primary);
     background: #FFF9FA;
+  }
+
+  /* QR 모달 */
+  .qr-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+  .qr-overlay.active { display: flex; }
+
+  .qr-modal {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 36px;
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+    animation: modalIn 0.25s ease-out;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .qr-modal h2 {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 20px;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+  .qr-modal .qr-subtitle {
+    font-size: 14px;
+    color: var(--text-sub);
+    margin-bottom: 24px;
+  }
+  .qr-modal canvas, .qr-modal svg {
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .qr-url {
+    margin-top: 16px;
+    padding: 10px 16px;
+    background: var(--bg-main);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    word-break: break-all;
+    user-select: all;
+  }
+  .qr-note {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .qr-close-btn {
+    margin-top: 20px;
+    padding: 10px 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-main);
+  }
+  .qr-close-btn:hover {
+    background: var(--bg-main);
   }
 
   /* ── 2. 메인 레이아웃 (Dashboard Grid) ── */
@@ -505,9 +587,26 @@
     <h1><span style="color: var(--secondary);">✝</span> 석담교회 말씀 이음</h1>
     <span class="admin-badge">관리자 시스템</span>
   </div>
-  <a class="viewer-link-btn" href="/" target="_blank" title="성도들이 보는 화면을 새 창으로 엽니다">
-    📺 성도용 화면 보기
-  </a>
+  <div class="header-right">
+    <button class="qr-btn" onclick="showQRCode()" title="성도용 QR 코드를 표시합니다">
+      QR 접속 코드
+    </button>
+    <a class="viewer-link-btn" href="/" target="_blank" title="성도들이 보는 화면을 새 창으로 엽니다">
+      📺 성도용 화면 보기
+    </a>
+  </div>
+</div>
+
+<!-- QR 코드 모달 -->
+<div class="qr-overlay" id="qrOverlay" onclick="closeQRModal(event)">
+  <div class="qr-modal" onclick="event.stopPropagation()">
+    <h2>성도용 화면 접속</h2>
+    <p class="qr-subtitle">아래 QR 코드를 스마트폰으로 스캔하세요</p>
+    <div id="qrCanvas"></div>
+    <div class="qr-url" id="qrUrl">로딩 중...</div>
+    <p class="qr-note">같은 네트워크(Wi-Fi)에 연결되어 있어야 접속할 수 있습니다</p>
+    <button class="qr-close-btn" onclick="closeQRModal()">닫기</button>
+  </div>
 </div>
 
 <!-- 메인 대시보드 -->
@@ -627,7 +726,53 @@
   <span id="statLatency"></span>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
+// ── QR 모달 ──
+let cachedViewerUrl = null;
+
+async function showQRCode() {
+  const overlay = document.getElementById('qrOverlay');
+  overlay.classList.add('active');
+
+  if (!cachedViewerUrl) {
+    try {
+      const res = await fetch('/api/network-info');
+      const info = await res.json();
+      cachedViewerUrl = info.viewer_url;
+    } catch (e) {
+      cachedViewerUrl = `${location.protocol}//${location.host}/`;
+    }
+  }
+
+  document.getElementById('qrUrl').textContent = cachedViewerUrl;
+
+  const container = document.getElementById('qrCanvas');
+  container.innerHTML = '';
+
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(cachedViewerUrl);
+    qr.make();
+    container.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 4, scalable: true });
+    // SVG 크기 고정
+    const svg = container.querySelector('svg');
+    if (svg) {
+      svg.setAttribute('width', '280');
+      svg.setAttribute('height', '280');
+      svg.style.borderRadius = '12px';
+      svg.style.border = '1px solid #E2DCD3';
+    }
+  } catch (e) {
+    container.textContent = 'QR 코드 생성 실패: ' + e.message;
+  }
+}
+
+function closeQRModal(event) {
+  if (event && event.target !== document.getElementById('qrOverlay')) return;
+  document.getElementById('qrOverlay').classList.remove('active');
+}
+
 // ── 설정 (서버에서 fetch) ──
 let MAX_SEGMENTS = 5;
 let LANGUAGES = {};

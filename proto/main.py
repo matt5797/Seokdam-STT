@@ -759,6 +759,30 @@ async def api_config():
     })
 
 
+@app.get("/api/network-info")
+async def api_network_info():
+    """내부망 IP 및 뷰어 URL 반환 (QR 코드 생성용)"""
+    import socket
+
+    local_ip = "127.0.0.1"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+
+    port = config.SERVER_PORT
+    viewer_url = f"http://{local_ip}:{port}/"
+
+    return JSONResponse({
+        "local_ip": local_ip,
+        "port": port,
+        "viewer_url": viewer_url,
+    })
+
+
 @app.get("/manifest.json")
 async def manifest():
     """PWA 매니페스트"""

@@ -405,12 +405,15 @@ class SubtitleSession:
 
     async def start(self):
         """세션 시작: 마이크 캡처 → STT → 번역"""
+        print(f"[STT] 세션 시작 (모델: {self.model}, 언어: {self.languages})")
         self.loop = asyncio.get_running_loop()
 
         # 마이크 시작
         try:
             self._start_audio()
+            print(f"[STT] 마이크 캡처 시작 (index: {self.mic_index})")
         except Exception as e:
+            print(f"[STT] 마이크 오류: {e}")
             await self._send({"type": "error", "message": f"마이크 오류: {e}"})
             return
 
@@ -419,6 +422,7 @@ class SubtitleSession:
             target=self._grpc_worker, daemon=True
         )
         self.grpc_thread.start()
+        print(f"[STT] gRPC 워커 스레드 시작")
 
         await self._send({
             "type": "status",
@@ -525,6 +529,10 @@ class SubtitleSession:
         import nest_pb2
         import nest_pb2_grpc
 
+        print(f"[STT] CLOVA gRPC 연결 중... ({config.CLOVA_GRPC_HOST})")
+        key_preview = config.CLOVA_SECRET[:8] + "..." if len(config.CLOVA_SECRET) > 8 else "(비어있음)"
+        print(f"[STT] API 키: {key_preview}")
+
         channel = grpc.secure_channel(
             config.CLOVA_GRPC_HOST,
             grpc.ssl_channel_credentials(),
@@ -546,10 +554,24 @@ class SubtitleSession:
                 )
         except Exception as e:
             error_msg = str(e)
-            # gRPC 에러에서 상세 정보 추출
+            # gRPC 에러에서 상세 정보 추출 + 사용자 친화적 메시지
             import grpc as _grpc
             if isinstance(e, _grpc.RpcError):
-                error_msg = f"{e.code()} - {e.details()}"
+                code = e.code()
+                details = e.details() or ""
+                if code == _grpc.StatusCode.UNAUTHENTICATED:
+                    error_msg = "CLOVA 인증 실패 — API 키(CLOVA_SECRET)를 확인하세요"
+                elif code == _grpc.StatusCode.UNAVAILABLE:
+                    error_msg = "CLOVA 서버 연결 불가 — 네트워크를 확인하세요"
+                elif code == _grpc.StatusCode.PERMISSION_DENIED:
+                    error_msg = "CLOVA 권한 거부 — API 키 권한을 확인하세요"
+                elif code == _grpc.StatusCode.DEADLINE_EXCEEDED:
+                    error_msg = "CLOVA 응답 시간 초과 — 네트워크 상태를 확인하세요"
+                else:
+                    error_msg = f"CLOVA STT 오류: {code.name} - {details}"
+                print(f"[!] gRPC 오류: {code.name} - {details}")
+            else:
+                print(f"[!] STT 오류: {error_msg}")
             self.loop.call_soon_threadsafe(
                 self.stt_queue.put_nowait, {"error": error_msg}
             )
@@ -734,6 +756,7 @@ async def admin_local_only(request: Request, call_next):
     if request.url.path.startswith("/admin") or request.url.path == "/ws/admin":
         host = request.client.host if request.client else ""
         if host not in ("127.0.0.1", "::1"):
+            print(f"[보안] 관리자 접근 차단: {host} → {request.url.path}")
             return RedirectResponse(url="/")
     return await call_next(request)
 
@@ -810,20 +833,26 @@ async def manifest():
 async def ws_admin(websocket: WebSocket):
     global active_session
 
+    client = websocket.client
+    print(f"[WS] 관리자 연결 시도 (from {client.host}:{client.port})")
     await websocket.accept()
     await manager.connect_admin(websocket)
+    print(f"[WS] 관리자 연결 성공")
 
     try:
         while True:
             raw = await websocket.receive_text()
             msg = json.loads(raw)
             action = msg.get("action")
+            print(f"[WS] 관리자 액션: {action}")
 
             if action == "get_mics":
                 try:
                     mics = get_microphones()
+                    print(f"[WS] 마이크 {len(mics)}개 감지")
                 except Exception as e:
                     mics = []
+                    print(f"[WS] 마이크 감지 실패: {e}")
                     await websocket.send_json({
                         "type": "error",
                         "message": f"마이크 감지 실패: {e}",
@@ -872,9 +901,11 @@ async def ws_admin(websocket: WebSocket):
                 })
 
     except WebSocketDisconnect:
-        pass
+        print("[WS] 관리자 연결 해제 (정상)")
     except Exception as e:
-        print(f"[WS Admin 오류] {e}")
+        import traceback
+        print(f"[WS] 관리자 연결 오류: {e}")
+        traceback.print_exc()
     finally:
         if active_session:
             await active_session.stop()
@@ -882,6 +913,7 @@ async def ws_admin(websocket: WebSocket):
         manager.set_streaming_state(False, [])
         manager.set_audio_streaming(False)
         await manager.disconnect_admin(websocket)
+        print("[WS] 관리자 세션 정리 완료")
 
 
 # ── WebSocket: 뷰어 ──
@@ -935,16 +967,24 @@ def main():
     ensure_proto_compiled()
 
     # API 키 확인
-    if config.CLOVA_SECRET == "YOUR_CLOVA_SECRET_KEY_HERE":
-        print("=" * 50)
-        print("  [!] config.py에 CLOVA_SECRET을 설정하세요.")
-        print("=" * 50)
-        sys.exit(1)
+    missing = []
+    if not config.CLOVA_SECRET or config.CLOVA_SECRET == "YOUR_CLOVA_SECRET_KEY_HERE":
+        missing.append("CLOVA_SECRET")
+    if not config.GEMINI_API_KEY or config.GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
+        missing.append("GEMINI_API_KEY")
 
-    if config.GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
+    if missing:
         print("=" * 50)
-        print("  [!] config.py에 GEMINI_API_KEY를 설정하세요.")
+        print(f"  [!] API 키가 설정되지 않았습니다: {', '.join(missing)}")
+        print()
+        print("  .env 파일을 만들어 키를 입력하세요:")
+        print(f"    위치: {os.path.join(SCRIPT_DIR, '.env')}")
+        print()
+        print("  .env 예시:")
+        print('    CLOVA_SECRET=your_key_here')
+        print('    GEMINI_API_KEY=your_key_here')
         print("=" * 50)
+        input("  아무 키나 누르면 종료합니다...")
         sys.exit(1)
 
     host = config.SERVER_HOST
@@ -981,7 +1021,7 @@ def main():
     threading.Timer(1.5, lambda: webbrowser.open(f"{admin_url}/admin")).start()
 
     import uvicorn
-    uvicorn.run(app, host=host, port=port, log_level="warning")
+    uvicorn.run(app, host=host, port=port, log_level="info")
 
 
 if __name__ == "__main__":

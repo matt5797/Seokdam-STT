@@ -25,8 +25,13 @@ class ConnectionManager:
     async def connect_admin(self, ws: WebSocket):
         async with self._lock:
             if self._admin is not None:
-                # 기존 연결 교체 (중복 접속 시 기존 닫기)
+                # 기존 연결에 교체 알림 후 닫기
+                print("[WS] 기존 관리자 연결 교체 (이전 연결 닫기)")
                 try:
+                    await self._admin.send_json({
+                        "type": "kicked",
+                        "message": "다른 탭에서 관리자로 접속했습니다.",
+                    })
                     await self._admin.close()
                 except Exception:
                     pass

@@ -785,6 +785,7 @@ let segments = [];
 let selectedLanguages = [];
 let isRunning = false;
 let latencyHistory = [];
+let kicked = false;
 
 // ── 초기화 ──
 window.addEventListener('load', async () => {
@@ -841,6 +842,7 @@ function getSelectedLanguages() {
 
 // ── WebSocket (원본 연결 로직) ──
 function connectWebSocket() {
+  kicked = false;
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}/ws/admin`);
 
@@ -855,6 +857,7 @@ function connectWebSocket() {
   };
 
   ws.onclose = () => {
+    if (kicked) return;  // 다른 탭에서 접속 — 재연결 안 함
     document.getElementById('connStatus').textContent = '● 연결 끊김 — 재연결 중...';
     updateStatus('error', '연결 끊김');
     if (isRunning) {
@@ -884,6 +887,15 @@ function handleMessage(data) {
       addTranslation(data.segment_id, data.lang, data.text, data.latency_ms, data.error, data.refined_ko);
       break;
     case 'error':
+      updateStatus('error', data.message);
+      if (isRunning) {
+        isRunning = false;
+        updateButtons();
+      }
+      break;
+    case 'kicked':
+      kicked = true;
+      document.getElementById('connStatus').textContent = '● 다른 탭에서 접속됨';
       updateStatus('error', data.message);
       break;
     case 'viewer_count':

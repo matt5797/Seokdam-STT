@@ -1,12 +1,44 @@
 """
 석담교회 말씀 이음 - 설정 파일
-내부 테스트용으로 API 키를 하드코딩합니다.
-배포 전 아래 키를 실제 값으로 교체하세요.
+API 키는 .env 파일에서 읽어옵니다.
+  1) proto/.env 파일을 만들고 키를 입력하세요 (.env.example 참고)
+  2) 또는 config_secret.py 파일을 만들어도 됩니다 (하위 호환)
 """
 
+import os as _os
+import pathlib as _pathlib
+
+
+def _load_env():
+    """exe 옆 또는 스크립트 옆 .env 파일을 읽어 환경변수로 등록"""
+    # PyInstaller exe → exe가 있는 폴더, 일반 실행 → 스크립트 폴더
+    if getattr(_os.sys, "frozen", False):
+        base = _pathlib.Path(_os.sys.executable).parent
+    else:
+        base = _pathlib.Path(__file__).parent
+
+    env_path = base / ".env"
+    if not env_path.exists():
+        return
+
+    with open(env_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip("\"'")
+            # 이미 시스템 환경변수에 있으면 그쪽 우선
+            if key not in _os.environ:
+                _os.environ[key] = value
+
+
+_load_env()
+
 # ── API Keys ──────────────────────────────────
-CLOVA_SECRET = ""
-GEMINI_API_KEY = ""
+CLOVA_SECRET = _os.environ.get("CLOVA_SECRET", "")
+GEMINI_API_KEY = _os.environ.get("GEMINI_API_KEY", "")
 
 # ── 서버 설정 ─────────────────────────────────
 SERVER_HOST = "0.0.0.0"
@@ -106,9 +138,3 @@ LANGUAGE_CONFIGS = {
         ),
     },
 }
-
-# ── 로컬 시크릿 키 덮어쓰기 ────────────────────
-try:
-    from config_secret import CLOVA_SECRET, GEMINI_API_KEY
-except ImportError:
-    pass

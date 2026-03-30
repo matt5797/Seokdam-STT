@@ -949,25 +949,36 @@ def main():
 
     host = config.SERVER_HOST
     port = config.SERVER_PORT
-    url = f"http://{host}:{port}"
+    admin_url = f"http://127.0.0.1:{port}"
+
+    # LAN IP 감지 (콘솔 표시용)
+    import socket
+    lan_ip = "127.0.0.1"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        lan_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
 
     # 중복 인스턴스 확인
-    if _is_port_in_use(host, port):
+    if _is_port_in_use("127.0.0.1", port):
         print(f"[*] 이미 실행 중인 인스턴스 감지 (포트 {port})")
         print(f"[*] 기존 브라우저 탭에서 사용하거나, 기존 프로세스를 종료하세요.")
         print(f"[*] 브라우저를 열겠습니다...")
-        webbrowser.open(f"{url}/admin")
+        webbrowser.open(f"{admin_url}/admin")
         sys.exit(0)
 
     print("=" * 50)
     print("  ✝ 석담교회 말씀 이음")
-    print(f"  관리자: {url}/admin")
-    print(f"  뷰어:   {url}/")
+    print(f"  관리자: {admin_url}/admin")
+    print(f"  뷰어:   http://{lan_ip}:{port}/")
     print("  종료: Ctrl+C")
     print("=" * 50)
 
     # 브라우저 자동 오픈 (약간의 딜레이)
-    threading.Timer(1.5, lambda: webbrowser.open(f"{url}/admin")).start()
+    threading.Timer(1.5, lambda: webbrowser.open(f"{admin_url}/admin")).start()
 
     import uvicorn
     uvicorn.run(app, host=host, port=port, log_level="warning")

@@ -609,8 +609,16 @@ function setMode(mode) {
 }
 function applyMode(mode) { setMode(mode); }
 
-// ── 오디오 (FAB 연동) ──
-let audioCtx = null, opusDecoder = null, audioEnabled = false, audioInited = false, isAudioLoading = false, workletNode = null;
+// ── 오디오 스트리밍 엔진 ──
+let audioCtx        = null;
+let opusDecoder     = null;
+let audioEnabled    = false;
+let audioInited     = false;
+let isAudioLoading  = false;
+let workletNode     = null;
+let scriptNode      = null; // HTTP 환경용 폴백
+let audioRingBuffer = [];
+const BUFFER_LIMIT  = 25;
 
 const WORKLET_SRC = `
 class PCMPlayerProcessor extends AudioWorkletProcessor {
@@ -639,27 +647,83 @@ registerProcessor('pcm-player', PCMPlayerProcessor);
 
 async function audioToggle() {
   if (isAudioLoading) return;
+
   if (!audioInited) {
-    isAudioLoading = true; updateAudioBtn();
+    isAudioLoading = true;
+    updateAudioBtn();
+
     try {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-      const blob = new Blob([WORKLET_SRC], { type: 'application/javascript' });
-      const url = URL.createObjectURL(blob);
-      await audioCtx.audioWorklet.addModule(url);
-      URL.revokeObjectURL(url);
-      workletNode = new AudioWorkletNode(audioCtx, 'pcm-player');
-      workletNode.connect(audioCtx.destination);
-      const { OpusDecoder } = await import('https://esm.sh/opus-decoder@0.7.7');
-      opusDecoder = new OpusDecoder({ sampleRate: 16000, channels: 1 });
-      await opusDecoder.ready;
-      audioInited = true; audioEnabled = true;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext({ sampleRate: 16000 });
+      
+      // 모바일 사파리 대응: 터치 시점에 resume 필수
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      // 1. 라이브러리 로드 (인터넷 필요)
+      try {
+        const { OpusDecoder } = await import('https://esm.sh/opus-decoder@0.7.7');
+        opusDecoder = new OpusDecoder({ sampleRate: 16000, channels: 1 });
+        await opusDecoder.ready;
+      } catch (err) {
+        console.error("Decoder Load Error:", err);
+        throw new Error("라이브러리 로드 실패 (인터넷 연결 확인)");
+      }
+
+      // 2. 오디오 노드 설정 (HTTPS면 Worklet, 아니면 ScriptProcessor)
+      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      
+      if (isSecure && audioCtx.audioWorklet) {
+        const blob = new Blob([WORKLET_SRC], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        await audioCtx.audioWorklet.addModule(url);
+        URL.revokeObjectURL(url);
+        workletNode = new AudioWorkletNode(audioCtx, 'pcm-player');
+        workletNode.connect(audioCtx.destination);
+        console.log("Audio Engine: AudioWorklet (Secure)");
+      } else {
+        // HTTP/Legacy Fallback
+        scriptNode = audioCtx.createScriptProcessor(2048, 1, 1);
+        let currentBuffer = null;
+        let offset = 0;
+
+        scriptNode.onaudioprocess = (e) => {
+          const out = e.outputBuffer.getChannelData(0);
+          if (!audioEnabled) { out.fill(0); return; }
+          
+          let written = 0;
+          while (written < out.length) {
+            if (!currentBuffer || offset >= currentBuffer.length) {
+              if (audioRingBuffer.length === 0) { out.fill(0, written); return; }
+              currentBuffer = audioRingBuffer.shift();
+              offset = 0;
+            }
+            const n = Math.min(currentBuffer.length - offset, out.length - written);
+            out.set(currentBuffer.subarray(offset, offset + n), written);
+            offset += n;
+            written += n;
+          }
+        };
+        scriptNode.connect(audioCtx.destination);
+        console.log("Audio Engine: ScriptProcessor (Compatibility Mode)");
+      }
+
+      audioInited = true;
+      audioEnabled = true;
       updateAudioBtn();
       showToast(i18n[currentUILang]["toast_audio_on"]);
-    } catch (e) { showToast(i18n[currentUILang]["toast_audio_error"]); }
-    finally { isAudioLoading = false; updateAudioBtn(); }
+    } catch (e) {
+      console.error(e);
+      showToast(i18n[currentUILang]["toast_audio_error"] + (e.message ? ": " + e.message : ""));
+    } finally {
+      isAudioLoading = false;
+      updateAudioBtn();
+    }
   } else {
     audioEnabled = !audioEnabled;
-    if (!audioEnabled && workletNode) workletNode.port.postMessage({ type: 'clear' });
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    
+    if (!audioEnabled) resetAudioBuffer();
+    
     updateAudioBtn();
     showToast(audioEnabled ? i18n[currentUILang]["toast_audio_on"] : i18n[currentUILang]["toast_audio_off"]);
   }
@@ -674,17 +738,25 @@ function updateAudioBtn() {
 }
 
 function handleAudioFrame(data) {
-  if (!audioEnabled || !opusDecoder || !workletNode) return;
+  if (!audioEnabled || !opusDecoder) return;
   try {
     const decoded = opusDecoder.decodeFrame(new Uint8Array(data));
     if (decoded && decoded.channelData && decoded.channelData[0]) {
       const pcm = new Float32Array(decoded.channelData[0]);
-      workletNode.port.postMessage({ type: 'audio', pcm }, [pcm.buffer]);
+      if (workletNode) {
+        workletNode.port.postMessage({ type: 'audio', pcm }, [pcm.buffer]);
+      } else {
+        audioRingBuffer.push(pcm);
+        if (audioRingBuffer.length > BUFFER_LIMIT) audioRingBuffer.splice(0, audioRingBuffer.length - 15);
+      }
     }
   } catch (e) {}
 }
 
-function resetAudioBuffer() { if (workletNode) workletNode.port.postMessage({ type: 'clear' }); }
+function resetAudioBuffer() {
+  audioRingBuffer = [];
+  if (workletNode) workletNode.port.postMessage({ type: 'clear' });
+}
 function setPillState(state, text) {
   const dot = document.getElementById('pillDot'), txt = document.getElementById('pillText');
   if (dot) dot.className = `pill-dot ${state}`;

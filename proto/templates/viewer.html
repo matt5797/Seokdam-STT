@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title data-i18n="header_title">석담교회 말씀 이음</title>
 
 <!-- PWA 메타 태그 -->
@@ -20,30 +20,31 @@
     --bg:        #FAF6F0;
     --bg-header: #F0E8DD;
     --bg-card:   #FFFFFF;
-    --border:    #D5C6B3; /* 조금 더 진하게 조절 */
-    --text:      #2C2116; /* 가독성을 위해 더 진한 색상 */
-    --text-muted:#756856; /* 어르신들도 잘 보이도록 명도 대비 높임 */
+    --border:    #D5C6B3;
+    --text:      #2C2116;
+    --text-muted:#756856;
     --accent:    #8B2635;
     --gold:      #B8963E;
     --gold-soft: #D4B96A;
     --en-color:  #2E5D8A;
-    --ne-color:  #4A7B2C; /* 조금 더 진한 녹색 */
+    --ne-color:  #4A7B2C;
     --success:   #3B7A30;
     --error:     #B8363B;
     --warning:   #C4922A;
 
-    /* 시니어를 배려해 기본 폰트 크기를 키움 */
-    --size-ko: 26px;
-    --size-tr: 20px;
+    --size-ko: 24px;
+    --size-tr: 19px;
+    
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
   }
 
-  body.mode-large      { --size-ko: 38px; --size-tr: 28px; }
-  body.mode-fullscreen { --size-ko: 52px; --size-tr: 38px; }
+  body.mode-large      { --size-ko: 34px; --size-tr: 26px; }
+  body.mode-fullscreen { --size-ko: 46px; --size-tr: 34px; }
 
-  /* 전체화면 모드에서만 헤더·하단바 숨김 */
-  body.mode-fullscreen .header   { display: none; }
-  body.mode-fullscreen .bottom-bar { display: none; }
-  body.mode-fullscreen .exit-fullscreen-btn { display: block; }
+  /* UI 숨김 모드 (몰입 모드) */
+  body.ui-hidden .header { transform: translateY(-100%); }
+  body.ui-hidden .fab-group { opacity: 0; pointer-events: none; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -55,51 +56,50 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
   }
 
-  /* ── 헤더 (모든 모드에서 표시) ── */
+  /* ── 헤더 (슬림화) ── */
   .header {
     background: var(--bg-header);
     border-bottom: 1px solid var(--border);
-    padding: 12px 20px;
+    padding: 8px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    z-index: 100;
+    transition: transform 0.3s ease;
   }
 
   .header-left {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    gap: 8px;
   }
 
   .header-title {
     font-family: 'Noto Serif KR', serif;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    white-space: nowrap;
   }
-  .header-title .cross { color: var(--gold); font-size: 20px; }
-
-  /* 상태 pill */
+  
   .status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: 13px;
+    gap: 4px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
   }
 
   .pill-dot {
-    width: 8px; height: 8px;
+    width: 6px; height: 6px;
     border-radius: 50%;
     background: var(--text-muted);
-    flex-shrink: 0;
   }
   .pill-dot.running    { background: var(--success); animation: pulse 1.5s infinite; }
   .pill-dot.error      { background: var(--error); }
@@ -110,53 +110,26 @@
     50%       { opacity: 0.3; }
   }
 
-  /* 명확한 오디오 버튼 */
-  .audio-btn {
-    background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 16px;
-    font-size: 15px;
-    cursor: pointer;
-    color: var(--text);
-    font-family: inherit;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  }
-  .audio-btn:active { transform: scale(0.96); }
-  .audio-btn.active {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-  }
-
-  /* ── 자막 영역 ── */
+  /* ── 자막 영역 (리스트 스타일) ── */
   .subtitle-area {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: normal;
-    padding: 20px;
-    gap: 16px;
+    padding: 16px;
+    gap: 20px;
     overflow-y: auto;
-    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   .segment {
-    background: var(--bg-card);
-    border-radius: 14px;
-    padding: 20px 24px;
-    border-left: 6px solid var(--gold-soft);
-    box-shadow: 0 4px 12px rgba(60, 40, 20, 0.08);
-    animation: fadeIn 0.35s ease;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.25s ease;
   }
+  .segment:last-child { border-bottom: none; }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
@@ -165,17 +138,17 @@
     font-size: var(--size-ko);
     font-weight: 700;
     color: var(--text);
-    line-height: 1.5;
+    line-height: 1.45;
     word-break: keep-all;
   }
 
   .seg-translation {
     font-size: var(--size-tr);
-    line-height: 1.5;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed var(--border);
+    line-height: 1.45;
+    margin-top: 8px;
+    color: var(--text-muted);
     word-break: keep-all;
+    font-weight: 500;
   }
   .seg-translation.en { color: var(--en-color); }
   .seg-translation.ne { color: var(--ne-color); }
@@ -183,242 +156,204 @@
   .empty-state {
     text-align: center;
     color: var(--text-muted);
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 18px;
     margin: auto;
-    line-height: 1.8;
-  }
-  .empty-state .cross-big {
-    font-size: 50px;
-    display: block;
-    margin-bottom: 16px;
-    color: var(--gold-soft);
+    line-height: 1.6;
   }
 
-  /* ── 하단 바 (컨트롤 영역) ── */
-  .bottom-bar {
-    background: var(--bg-card);
-    border-top: 1px solid var(--border);
-    padding: 16px 20px;
+  /* ── 플로팅 버튼 그룹 (FAB) ── */
+  .fab-group {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + var(--safe-bottom));
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    box-shadow: 0 -4px 16px rgba(0,0,0,0.04);
-    z-index: 10;
+    gap: 12px;
+    z-index: 200;
+    transition: opacity 0.3s ease;
   }
 
-  .control-row {
+  .fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background: var(--bg-card);
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     display: flex;
     align-items: center;
-    gap: 16px;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s;
   }
-
-  .row-label {
-    font-size: 16px;
-    font-weight: 700;
+  .fab:active { transform: scale(0.9); }
+  
+  .fab-audio {
+    background: var(--accent);
+    color: #fff;
+  }
+  .fab-audio.muted {
+    background: #666;
+  }
+  .fab-settings {
+    background: var(--bg-card);
     color: var(--text);
-    min-width: 75px;
-    flex-shrink: 0;
   }
 
-  /* 글씨 크기 버튼 그룹 */
-  .size-btns {
+  /* ── 설정 모달 (Bottom Sheet 스타일) ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+    display: none;
+    align-items: flex-end;
+  }
+  .modal-overlay.show { display: flex; }
+
+  .modal-content {
+    width: 100%;
+    background: var(--bg-card);
+    border-radius: 20px 20px 0 0;
+    padding: 24px;
+    padding-bottom: calc(24px + var(--safe-bottom));
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .modal-header {
     display: flex;
-    gap: 8px;
-    flex: 1;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
   }
+  .modal-title { font-weight: 700; font-size: 18px; }
+  .modal-close { font-size: 24px; cursor: pointer; padding: 4px; }
 
-  .size-btn {
+  .setting-row { margin-bottom: 24px; }
+  .setting-label { font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; display: block; }
+
+  /* 버튼 그룹 */
+  .btn-group { display: flex; gap: 8px; }
+  .btn-option {
     flex: 1;
     background: var(--bg);
-    border: 2px solid var(--border);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 12px 8px;
-    font-size: 16px;
-    cursor: pointer;
-    color: var(--text);
-    font-family: inherit;
+    padding: 12px 4px;
+    font-size: 14px;
     font-weight: 700;
-    transition: all 0.2s;
+    cursor: pointer;
     text-align: center;
-    word-break: keep-all;
   }
-  .size-btn:active { transform: scale(0.96); }
-  .size-btn.active {
+  .btn-option.active {
     background: var(--accent);
     color: #fff;
     border-color: var(--accent);
   }
 
-  /* 언어 선택 칩 영역 */
-  .lang-chips {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    flex: 1;
-  }
-
+  /* 언어 칩 */
+  .lang-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .lang-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 16px;
-    border-radius: 24px;
-    border: 2px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
     background: var(--bg);
-    cursor: pointer;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
-    color: var(--text);
-    transition: all 0.2s;
-    user-select: none;
-    white-space: nowrap;
+    cursor: pointer;
   }
-  .lang-chip input { display: none; }
   .lang-chip.checked {
-    border-color: var(--text);
     background: var(--text);
     color: #fff;
-  }
-
-  /* 전체화면 종료 플로팅 버튼 */
-  .exit-fullscreen-btn {
-    display: none;
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(44, 33, 22, 0.9);
-    color: #fff;
-    border: none;
-    padding: 14px 28px;
-    border-radius: 30px;
-    font-size: 18px;
-    font-weight: 700;
-    z-index: 1000;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-    cursor: pointer;
+    border-color: var(--text);
   }
 
   /* ── 토스트 ── */
   .toast {
     position: fixed;
-    bottom: 100px;
+    top: 20px;
     left: 50%;
-    transform: translateX(-50%) translateY(20px);
+    transform: translateX(-50%) translateY(-20px);
     background: rgba(44, 33, 22, 0.9);
     color: #fff;
-    padding: 12px 24px;
-    border-radius: 30px;
-    font-size: 16px;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
     font-weight: 600;
     opacity: 0;
-    transition: opacity 0.3s, transform 0.3s;
-    pointer-events: none;
-    white-space: nowrap;
-    z-index: 100;
+    transition: all 0.3s;
+    z-index: 2000;
   }
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* 언어 선택기 */
   .ui-lang-select {
-    background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 14px;
-    font-family: inherit;
-    font-weight: 700;
-    color: var(--text);
-    cursor: pointer;
-    outline: none;
-    transition: all 0.2s;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232C2116' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    background-size: 12px;
-    padding-right: 28px;
-  }
-  .ui-lang-select:focus { border-color: var(--accent); }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    background: none; border: none; font-size: 20px; cursor: pointer;
   }
 </style>
 </head>
 <body class="mode-base">
 
 <!-- 헤더 -->
-<div class="header">
+<div class="header" id="header">
   <div class="header-left">
-    <div class="header-title">
-      <span class="cross">✝</span> <span data-i18n="header_title">석담교회 말씀 이음</span>
-    </div>
+    <div class="header-title" data-i18n="header_title_short">석담교회 말씀 이음</div>
     <div class="status-pill">
       <span class="pill-dot" id="pillDot"></span>
       <span id="pillText" data-i18n="pill_connecting">연결 중...</span>
     </div>
   </div>
-
-  <div class="header-right">
-    <select id="uiLangSelect" onchange="changeUILang(this.value)" class="ui-lang-select">
-      <option value="ko">🇰🇷</option>
-      <option value="en">🇺🇸</option>
-      <option value="ne">🇳🇵</option>
-    </select>
-
-    <button class="audio-btn" id="audioBtn" onclick="audioToggle()">
-      <span class="icon">🔇</span>
-      <span class="text" data-i18n="audio_on_btn">소리 켜기</span>
-    </button>
-  </div>
+  <select id="uiLangSelect" onchange="changeUILang(this.value)" class="ui-lang-select">
+    <option value="ko">🇰🇷</option>
+    <option value="en">🇺🇸</option>
+    <option value="ne">🇳🇵</option>
+  </select>
 </div>
 
 <!-- 자막 영역 -->
-<div class="subtitle-area" id="subtitleArea">
+<div class="subtitle-area" id="subtitleArea" onclick="toggleUI()">
   <div class="empty-state" id="emptyState">
-    <span class="cross-big">✝</span>
     <span data-i18n="empty_msg">예배가 시작되면<br>이곳에 자막이 표시됩니다</span>
   </div>
 </div>
 
-<!-- 하단 바: 컨트롤 영역 -->
-<div class="bottom-bar">
-  
-  <!-- 글자 크기 조절 (항상 노출) -->
-  <div class="control-row">
-    <span class="row-label" data-i18n="size_label">글자 크기</span>
-    <div class="size-btns">
-      <button class="size-btn" id="btnBase"       onclick="setMode('base')" data-i18n="size_base">보통</button>
-      <button class="size-btn" id="btnLarge"      onclick="setMode('large')" data-i18n="size_large">크게</button>
-      <button class="size-btn" id="btnFullscreen" onclick="setMode('fullscreen')" data-i18n="size_fullscreen">화면 가득</button>
-    </div>
-  </div>
-
-  <!-- 다국어 번역 (해당 예배에 번역이 있을 때만 노출) -->
-  <div class="control-row" id="langRow" style="display: none;">
-    <span class="row-label" data-i18n="lang_row_label">외국어 번역</span>
-    <div class="lang-chips" id="langChips">
-      <!-- 칩이 동적으로 추가됩니다 -->
-    </div>
-  </div>
-
+<!-- 플로팅 버튼 (FAB) -->
+<div class="fab-group">
+  <button class="fab fab-settings" onclick="toggleSettings(true)" id="settingsBtn">⚙️</button>
+  <button class="fab fab-audio muted" id="audioBtn" onclick="audioToggle()">
+    <span class="icon">🔇</span>
+  </button>
 </div>
 
-<!-- 전체화면 모드에서 빠져나오는 버튼 -->
-<button class="exit-fullscreen-btn" onclick="setMode('large')" data-i18n="exit_fullscreen">
-  전체화면 닫기
-</button>
+<!-- 설정 모달 -->
+<div class="modal-overlay" id="settingsModal" onclick="toggleSettings(false)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" data-i18n="settings_title">화면 설정</div>
+      <div class="modal-close" onclick="toggleSettings(false)">✕</div>
+    </div>
 
-<!-- 토스트 -->
+    <div class="setting-row">
+      <span class="setting-label" data-i18n="size_label">글자 크기</span>
+      <div class="btn-group">
+        <button class="btn-option" id="btnBase" onclick="setMode('base')" data-i18n="size_base">보통</button>
+        <button class="btn-option" id="btnLarge" onclick="setMode('large')" data-i18n="size_large">크게</button>
+        <button class="btn-option" id="btnFullscreen" onclick="setMode('fullscreen')" data-i18n="size_fullscreen">최대</button>
+      </div>
+    </div>
+
+    <div class="setting-row" id="langRow" style="display: none;">
+      <span class="setting-label" data-i18n="lang_row_label">외국어 번역</span>
+      <div class="lang-chips" id="langChips"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -426,9 +361,10 @@
 const i18n = {
   ko: {
     "header_title": "석담교회 말씀 이음",
+    "header_title_short": "석담교회 말씀 이음",
     "pill_connecting": "연결 중...",
     "pill_connected": "연결됨",
-    "pill_receiving": "자막 수신 중",
+    "pill_receiving": "수신 중",
     "pill_error": "재연결 중...",
     "pill_waiting": "대기 중",
     "audio_on_btn": "소리 켜기",
@@ -437,55 +373,57 @@ const i18n = {
     "size_label": "글자 크기",
     "size_base": "보통",
     "size_large": "크게",
-    "size_fullscreen": "화면 가득",
+    "size_fullscreen": "최대",
     "lang_row_label": "외국어 번역",
-    "exit_fullscreen": "전체화면 닫기",
     "toast_audio_on": "소리가 켜졌습니다",
     "toast_audio_off": "소리가 꺼졌습니다",
     "toast_audio_error": "소리를 켤 수 없습니다",
-    "loading": "번역 중..."
+    "loading": "번역 중...",
+    "settings_title": "화면 설정"
   },
   en: {
-    "header_title": "Seokdam Church Sermon Ee-eum",
+    "header_title": "Seokdam Sermon Ee-eum",
+    "header_title_short": "Seokdam Sermon",
     "pill_connecting": "Connecting...",
     "pill_connected": "Connected",
-    "pill_receiving": "Receiving subtitles",
+    "pill_receiving": "Receiving",
     "pill_error": "Reconnecting...",
     "pill_waiting": "Idle",
-    "audio_on_btn": "Turn sound on",
-    "audio_off_btn": "Turn sound off",
+    "audio_on_btn": "Sound On",
+    "audio_off_btn": "Sound Off",
     "empty_msg": "Subtitles will appear here<br>when the service starts",
     "size_label": "Text Size",
     "size_base": "Normal",
     "size_large": "Large",
-    "size_fullscreen": "Full Screen",
+    "size_fullscreen": "Full",
     "lang_row_label": "Translation",
-    "exit_fullscreen": "Exit Full Screen",
     "toast_audio_on": "Sound turned on",
     "toast_audio_off": "Sound turned off",
     "toast_audio_error": "Cannot turn on sound",
-    "loading": "Translating..."
+    "loading": "Translating...",
+    "settings_title": "Settings"
   },
   ne: {
     "header_title": "सेकदम चर्च वचन इयुम",
+    "header_title_short": "सेकदम चर्च",
     "pill_connecting": "जडान गर्दै...",
     "pill_connected": "जडान भयो",
-    "pill_receiving": "उपशीर्षकहरू प्राप्त गर्दै",
+    "pill_receiving": "प्राप्त गर्दै",
     "pill_error": "पुन: जडान गर्दै...",
-    "pill_waiting": "प्रतीक्षा गर्दै",
+    "pill_waiting": "प्रतीक्षा",
     "audio_on_btn": "आवाज खोल्नुहोस्",
     "audio_off_btn": "आवाज बन्द गर्नुहोस्",
     "empty_msg": "सेवा सुरु भएपछि<br>यहाँ उपशीर्षकहरू देखा पर्नेछ",
     "size_label": "अक्षर साइज",
     "size_base": "सामान्य",
     "size_large": "ठूलो",
-    "size_fullscreen": "पूरा स्क्रिन",
+    "size_fullscreen": "पूरा",
     "lang_row_label": "अनुवाद",
-    "exit_fullscreen": "पूरा स्क्रिन बन्द गर्नुहोस्",
     "toast_audio_on": "आवाज खोलियो",
     "toast_audio_off": "आवाज बन्द गरियो",
     "toast_audio_error": "आवाज खोल्न सकिएन",
-    "loading": "अनुवाद गर्दै..."
+    "loading": "अनुवाद गर्दै...",
+    "settings_title": "सेटिङहरू"
   }
 };
 
@@ -501,7 +439,6 @@ function changeUILang(lang) {
     }
   });
   document.getElementById('uiLangSelect').value = lang;
-  updateAudioBtn(); // Update text based on lang
 }
 
 // ── 상태 ──
@@ -513,10 +450,7 @@ let reconnectTimer = null;
 let wakeLock       = null;
 let LANGUAGES      = {};
 let MAX_SEGMENTS   = 5;
-
-// 서버에서 현재 번역 중인 언어 목록
 let activeLanguages  = [];
-// 사용자가 체크한 언어 (Set)
 let checkedLanguages = new Set(JSON.parse(localStorage.getItem('checkedLangs') || '[]'));
 
 // ── 초기화 ──
@@ -535,160 +469,106 @@ async function loadConfig() {
     LANGUAGES    = cfg.languages;
     MAX_SEGMENTS = cfg.max_segments;
   } catch (e) {
-    LANGUAGES = {
-      en: { name: 'English', flag: '🇺🇸' },
-      ne: { name: 'नेपाली',  flag: '🇳🇵' },
-    };
+    LANGUAGES = { en: { name: 'English', flag: '🇺🇸' }, ne: { name: 'नेपाली',  flag: '🇳🇵' } };
   }
+}
+
+// ── UI 몰입 모드 ──
+function toggleUI() {
+  document.body.classList.toggle('ui-hidden');
+}
+
+function toggleSettings(show) {
+  document.getElementById('settingsModal').classList.toggle('show', show);
 }
 
 // ── 언어 바 렌더링 ──
 function setActiveLanguages(languages) {
   activeLanguages = languages || [];
-
-  // 새로 활성화된 언어는 기본 체크
-  activeLanguages.forEach(code => {
-    if (!checkedLanguages.has(code)) checkedLanguages.add(code);
-  });
-
+  activeLanguages.forEach(code => { if (!checkedLanguages.has(code)) checkedLanguages.add(code); });
   buildLangChips();
   renderSubtitles();
-}
-
-function clearActiveLanguages() {
-  activeLanguages = [];
-  buildLangChips();
 }
 
 function buildLangChips() {
   const container = document.getElementById('langChips');
   const langRow = document.getElementById('langRow');
   container.innerHTML = '';
-
-  // 활성화된 번역 언어가 없으면 줄 자체를 숨김 (시니어분들이 혼란스럽지 않도록)
-  if (activeLanguages.length === 0) {
-    langRow.style.display = 'none';
-    return;
-  }
-
-  langRow.style.display = 'flex';
-
+  if (activeLanguages.length === 0) { langRow.style.display = 'none'; return; }
+  langRow.style.display = 'block';
   activeLanguages.forEach(code => {
-    const cfg  = LANGUAGES[code] || { name: code, flag: '' };
-    const chip = document.createElement('label');
+    const cfg = LANGUAGES[code] || { name: code, flag: '' };
+    const chip = document.createElement('div');
     const isChecked = checkedLanguages.has(code);
     chip.className = 'lang-chip' + (isChecked ? ' checked' : '');
-
-    const input  = document.createElement('input');
-    input.type   = 'checkbox';
-    input.value  = code;
-    input.checked = isChecked;
-
-    input.addEventListener('change', () => {
-      if (input.checked) {
-        checkedLanguages.add(code);
-        chip.classList.add('checked');
-      } else {
-        checkedLanguages.delete(code);
-        chip.classList.remove('checked');
-      }
+    chip.textContent = `${cfg.flag} ${cfg.name}`;
+    chip.onclick = () => {
+      if (checkedLanguages.has(code)) checkedLanguages.delete(code);
+      else checkedLanguages.add(code);
       saveCheckedLangs();
+      buildLangChips();
       renderSubtitles();
-    });
-
-    chip.appendChild(input);
-    chip.insertAdjacentText('beforeend', `${cfg.flag} ${cfg.name}`);
+    };
     container.appendChild(chip);
   });
 }
 
-function saveCheckedLangs() {
-  localStorage.setItem('checkedLangs', JSON.stringify([...checkedLanguages]));
-}
+function saveCheckedLangs() { localStorage.setItem('checkedLangs', JSON.stringify([...checkedLanguages])); }
 
-// ── WebSocket + 자동 재연결 ──
+// ── WebSocket ──
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}/ws/viewer`);
-
-  ws.onopen = () => {
-    reconnectDelay = 1000;
-    setPillState('running', i18n[currentUILang]["pill_connected"]);
-  };
-
+  ws.onopen = () => { setPillState('running', i18n[currentUILang]["pill_connected"]); };
   ws.binaryType = 'arraybuffer';
   ws.onmessage = (evt) => {
     if (evt.data === 'pong') return;
-    if (typeof evt.data === 'string') {
-      try { handleMessage(JSON.parse(evt.data)); } catch (e) {}
-    } else {
-      handleAudioFrame(evt.data);
-    }
+    if (typeof evt.data === 'string') { try { handleMessage(JSON.parse(evt.data)); } catch (e) {} }
+    else { handleAudioFrame(evt.data); }
   };
-
   ws.onclose = () => {
     setPillState('error', i18n[currentUILang]["pill_error"]);
-    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
     resetAudioBuffer();
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(connect, reconnectDelay);
+    setTimeout(connect, 2000);
   };
-
-  ws.onerror = () => { setPillState('error', 'Error'); };
 }
 
 function handleMessage(data) {
   switch (data.type) {
-    case 'heartbeat':
-      break;
-
     case 'session_start':
       segments = [];
       setActiveLanguages(data.languages || []);
       resetAudioBuffer();
       break;
-
     case 'status':
       if (data.state === 'running') {
         setPillState('running', i18n[currentUILang]["pill_receiving"]);
-        if (data.languages && data.languages.length > 0) {
-          setActiveLanguages(data.languages);
-        }
-      } else if (data.state === 'connecting') {
-        setPillState('connecting', i18n[currentUILang]["pill_connecting"]);
+        if (data.languages) setActiveLanguages(data.languages);
       } else {
         setPillState('', i18n[currentUILang]["pill_waiting"]);
-        clearActiveLanguages();
-        stopAudioPlayback();
       }
       break;
-
-    case 'stt': {
+    case 'stt':
       if (!segments.find(s => s.id === data.segment_id)) {
         segments.push({ id: data.segment_id, ko: data.text, translations: {} });
         if (segments.length > MAX_SEGMENTS) segments.shift();
         renderSubtitles();
       }
       break;
-    }
-
-    case 'translation': {
+    case 'translation':
       const seg = segments.find(s => s.id === data.segment_id);
       if (seg) {
         seg.translations[data.lang] = data.text;
-        if (data.refined_ko && data.refined_ko.trim()) seg.ko = data.refined_ko;
+        if (data.refined_ko) seg.ko = data.refined_ko;
         renderSubtitles();
       }
       break;
-    }
   }
 }
 
-// ── 자막 렌더링 (최적화 버전) ──
 function renderSubtitles() {
-  const area  = document.getElementById('subtitleArea');
+  const area = document.getElementById('subtitleArea');
   const empty = document.getElementById('emptyState');
-
   if (segments.length === 0) {
     empty.style.display = '';
     area.querySelectorAll('.segment').forEach(el => el.remove());
@@ -696,13 +576,9 @@ function renderSubtitles() {
   }
   empty.style.display = 'none';
 
-  // 1. 사라진 세그먼트 제거
   const segmentIds = new Set(segments.map(s => String(s.id)));
-  area.querySelectorAll('.segment').forEach(el => {
-    if (!segmentIds.has(el.dataset.id)) el.remove();
-  });
+  area.querySelectorAll('.segment').forEach(el => { if (!segmentIds.has(el.dataset.id)) el.remove(); });
 
-  // 2. 세그먼트 업데이트 또는 추가
   segments.forEach(seg => {
     let div = area.querySelector(`.segment[data-id="${seg.id}"]`);
     if (!div) {
@@ -711,100 +587,49 @@ function renderSubtitles() {
       div.dataset.id = seg.id;
       area.appendChild(div);
     }
-
     let html = `<div class="seg-ko">${escapeHtml(seg.ko)}</div>`;
     for (const code of activeLanguages) {
       if (!checkedLanguages.has(code)) continue;
-      const cfg = LANGUAGES[code] || { flag: '', name: code };
-      const tr  = seg.translations[code];
-      if (tr) {
-        html += `<div class="seg-translation ${code}">${cfg.flag} ${escapeHtml(tr)}</div>`;
-      }
+      const tr = seg.translations[code];
+      if (tr) html += `<div class="seg-translation ${code}">${escapeHtml(tr)}</div>`;
     }
-
-    if (div.innerHTML !== html) {
-      div.innerHTML = html;
-    }
+    if (div.innerHTML !== html) div.innerHTML = html;
   });
-
   area.scrollTop = area.scrollHeight;
 }
 
-// ── 글씨 크기 모드 ──
+// ── 설정 ──
 function setMode(mode) {
   sizeMode = mode;
   document.body.className = `mode-${mode}`;
   localStorage.setItem('sizeMode', mode);
-
-  document.getElementById('btnBase').classList.toggle('active',       mode === 'base');
-  document.getElementById('btnLarge').classList.toggle('active',      mode === 'large');
+  document.getElementById('btnBase').classList.toggle('active', mode === 'base');
+  document.getElementById('btnLarge').classList.toggle('active', mode === 'large');
   document.getElementById('btnFullscreen').classList.toggle('active', mode === 'fullscreen');
-
-  if (mode === 'fullscreen') {
-    document.documentElement.requestFullscreen?.().catch(() => {});
-  } else if (document.fullscreenElement) {
-    document.exitFullscreen?.().catch(() => {});
-  }
 }
-
 function applyMode(mode) { setMode(mode); }
 
-document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement && sizeMode === 'fullscreen') {
-    setMode('large');
-  }
-});
-
-// ── 오디오 스트리밍 엔진 ──
-let audioCtx        = null;
-let opusDecoder     = null;
-let audioEnabled    = false;
-let audioInited     = false;
-let isAudioLoading  = false;
-let workletNode     = null;
+// ── 오디오 (FAB 연동) ──
+let audioCtx = null, opusDecoder = null, audioEnabled = false, audioInited = false, isAudioLoading = false, workletNode = null;
 
 const WORKLET_SRC = `
 class PCMPlayerProcessor extends AudioWorkletProcessor {
-  constructor() {
-    super();
-    this.ring = [];
-    this.current = null;
-    this.offset = 0;
-    this.bufferLimit = 25; // 60ms * 25 = 1.5s
+  constructor() { super(); this.ring = []; this.current = null; this.offset = 0; this.bufferLimit = 25;
     this.port.onmessage = (e) => {
-      if (e.data.type === 'audio') {
-        this.ring.push(e.data.pcm);
-        if (this.ring.length > this.bufferLimit) {
-          // 지연이 심하면 오래된 데이터 일부 삭제 (부드럽게 유지)
-          this.ring.splice(0, this.ring.length - 15);
-        }
-      } else if (e.data.type === 'clear') {
-        this.ring = [];
-        this.current = null;
-        this.offset = 0;
-      }
+      if (e.data.type === 'audio') { this.ring.push(e.data.pcm); if (this.ring.length > this.bufferLimit) this.ring.splice(0, this.ring.length - 15); }
+      else if (e.data.type === 'clear') { this.ring = []; this.current = null; this.offset = 0; }
     };
   }
-
   process(inputs, outputs) {
-    const out = outputs[0][0];
-    let written = 0;
-
+    const out = outputs[0][0]; let written = 0;
     while (written < out.length) {
       if (!this.current || this.offset >= this.current.length) {
-        if (this.ring.length === 0) {
-          out.fill(0, written);
-          return true;
-        }
-        this.current = this.ring.shift();
-        this.offset = 0;
+        if (this.ring.length === 0) { out.fill(0, written); return true; }
+        this.current = this.ring.shift(); this.offset = 0;
       }
-      const avail = this.current.length - this.offset;
-      const need = out.length - written;
-      const n = Math.min(avail, need);
+      const n = Math.min(this.current.length - this.offset, out.length - written);
       out.set(this.current.subarray(this.offset, this.offset + n), written);
-      this.offset += n;
-      written += n;
+      this.offset += n; written += n;
     }
     return true;
   }
@@ -814,44 +639,27 @@ registerProcessor('pcm-player', PCMPlayerProcessor);
 
 async function audioToggle() {
   if (isAudioLoading) return;
-
   if (!audioInited) {
-    isAudioLoading = true;
-    updateAudioBtn();
-
+    isAudioLoading = true; updateAudioBtn();
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
       const blob = new Blob([WORKLET_SRC], { type: 'application/javascript' });
       const url = URL.createObjectURL(blob);
       await audioCtx.audioWorklet.addModule(url);
       URL.revokeObjectURL(url);
-
       workletNode = new AudioWorkletNode(audioCtx, 'pcm-player');
       workletNode.connect(audioCtx.destination);
-
       const { OpusDecoder } = await import('https://esm.sh/opus-decoder@0.7.7');
       opusDecoder = new OpusDecoder({ sampleRate: 16000, channels: 1 });
       await opusDecoder.ready;
-
-      audioInited = true;
-      audioEnabled = true;
-
-      // 배경 재생 유지는 AudioWorklet 연결만으로 충분 (문제있는 silentAudio 제거)
-
+      audioInited = true; audioEnabled = true;
       updateAudioBtn();
       showToast(i18n[currentUILang]["toast_audio_on"]);
-    } catch (e) {
-      console.error(e);
-      showToast(i18n[currentUILang]["toast_audio_error"]);
-    } finally {
-      isAudioLoading = false;
-      updateAudioBtn();
-    }
+    } catch (e) { showToast(i18n[currentUILang]["toast_audio_error"]); }
+    finally { isAudioLoading = false; updateAudioBtn(); }
   } else {
     audioEnabled = !audioEnabled;
-    if (!audioEnabled && workletNode) {
-      workletNode.port.postMessage({ type: 'clear' });
-    }
+    if (!audioEnabled && workletNode) workletNode.port.postMessage({ type: 'clear' });
     updateAudioBtn();
     showToast(audioEnabled ? i18n[currentUILang]["toast_audio_on"] : i18n[currentUILang]["toast_audio_off"]);
   }
@@ -860,84 +668,34 @@ async function audioToggle() {
 function updateAudioBtn() {
   const btn = document.getElementById('audioBtn');
   const icon = btn.querySelector('.icon');
-  const text = btn.querySelector('.text');
-  
-  if (isAudioLoading) {
-    icon.textContent = '⏳';
-    text.textContent = i18n[currentUILang]["loading"] || '...';
-    btn.disabled = true;
-    return;
-  }
-  btn.disabled = false;
-
-  if (audioEnabled) {
-    icon.textContent = '🔊';
-    text.textContent = i18n[currentUILang]["audio_off_btn"];
-    btn.classList.add('active');
-  } else {
-    icon.textContent = '🔇';
-    text.textContent = i18n[currentUILang]["audio_on_btn"];
-    btn.classList.remove('active');
-  }
+  if (isAudioLoading) { icon.textContent = '⏳'; return; }
+  if (audioEnabled) { icon.textContent = '🔊'; btn.classList.remove('muted'); }
+  else { icon.textContent = '🔇'; btn.classList.add('muted'); }
 }
 
 function handleAudioFrame(data) {
   if (!audioEnabled || !opusDecoder || !workletNode) return;
   try {
     const decoded = opusDecoder.decodeFrame(new Uint8Array(data));
-    if (!decoded || !decoded.channelData || !decoded.channelData[0]) return;
-    const pcm = new Float32Array(decoded.channelData[0]);
-    workletNode.port.postMessage({ type: 'audio', pcm }, [pcm.buffer]);
+    if (decoded && decoded.channelData && decoded.channelData[0]) {
+      const pcm = new Float32Array(decoded.channelData[0]);
+      workletNode.port.postMessage({ type: 'audio', pcm }, [pcm.buffer]);
+    }
   } catch (e) {}
 }
 
-function resetAudioBuffer() {
-  if (workletNode) workletNode.port.postMessage({ type: 'clear' });
-}
-function stopAudioPlayback() {
-  if (workletNode) workletNode.port.postMessage({ type: 'clear' });
-}
-
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-  }
-});
-
-// ── 상태 pill ──
+function resetAudioBuffer() { if (workletNode) workletNode.port.postMessage({ type: 'clear' }); }
 function setPillState(state, text) {
-  const dot = document.getElementById('pillDot');
-  const txt = document.getElementById('pillText');
+  const dot = document.getElementById('pillDot'), txt = document.getElementById('pillText');
   if (dot) dot.className = `pill-dot ${state}`;
   if (txt) txt.textContent = text;
 }
-
-// ── Wake Lock ──
-async function requestWakeLock() {
-  if ('wakeLock' in navigator) {
-    try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
-  }
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') requestWakeLock();
-});
-
-// ── 토스트 ──
+async function requestWakeLock() { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} } }
 function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2800);
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
 }
-
-// ── 유틸 ──
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  return div.innerHTML;
-}
+function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
 </script>
 </body>
 </html>

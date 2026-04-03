@@ -470,7 +470,7 @@ class SubtitleSession:
         self.audio_stream = sd.RawInputStream(
             device=self.mic_index,
             samplerate=config.AUDIO_SAMPLE_RATE,
-            blocksize=config.AUDIO_SAMPLE_RATE,  # 1초 단위
+            blocksize=config.OPUS_FRAME_SAMPLES,
             dtype="int16",
             channels=config.AUDIO_CHANNELS,
             callback=self._audio_callback,
@@ -782,20 +782,40 @@ async def api_config():
     })
 
 
-@app.get("/api/network-info")
-async def api_network_info():
-    """내부망 IP 및 뷰어 URL 반환 (QR 코드 생성용)"""
+def get_lan_ip():
+    """PC의 실제 LAN IP 주소를 감지 (인터넷 미연결 시에도 동작 시도)"""
     import socket
 
-    local_ip = "127.0.0.1"
+    # 1. UDP 소켓을 통한 경로 탐색 (가장 정확한 주 인터페이스 탐색)
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # 실제로 데이터를 보내지는 않지만, 외부 경로를 통해 나가는 IP를 찾음
         s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
+        ip = s.getsockname()[0]
         s.close()
+        if ip and ip != "127.0.0.1":
+            return ip
     except Exception:
         pass
 
+    # 2. 호스트 이름을 통한 IP 조회 (인터넷 미연결 시 대비)
+    try:
+        hostname = socket.gethostname()
+        # gethostbyname_ex를 사용해 여러 주소 중 루프백이 아닌 것을 선택
+        _, _, addresses = socket.gethostbyname_ex(hostname)
+        for addr in addresses:
+            if not addr.startswith("127."):
+                return addr
+    except Exception:
+        pass
+
+    return "127.0.0.1"
+
+
+@app.get("/api/network-info")
+async def api_network_info():
+    """내부망 IP 및 뷰어 URL 반환 (QR 코드 생성용)"""
+    local_ip = get_lan_ip()
     port = config.SERVER_PORT
     viewer_url = f"http://{local_ip}:{port}/"
 
@@ -992,15 +1012,7 @@ def main():
     admin_url = f"http://127.0.0.1:{port}"
 
     # LAN IP 감지 (콘솔 표시용)
-    import socket
-    lan_ip = "127.0.0.1"
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        lan_ip = s.getsockname()[0]
-        s.close()
-    except Exception:
-        pass
+    lan_ip = get_lan_ip()
 
     # 중복 인스턴스 확인
     if _is_port_in_use("127.0.0.1", port):

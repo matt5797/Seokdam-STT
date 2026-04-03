@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>석담교회 말씀 이음</title>
+<title data-i18n="header_title">석담교회 말씀 이음</title>
 
 <!-- PWA 메타 태그 -->
 <meta name="mobile-web-app-capable" content="yes">
@@ -139,7 +139,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: normal;
     padding: 20px;
     gap: 16px;
     overflow-y: auto;
@@ -323,6 +323,35 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
+  /* 언어 선택기 */
+  .ui-lang-select {
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232C2116' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
+    padding-right: 28px;
+  }
+  .ui-lang-select:focus { border-color: var(--accent); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 </style>
 </head>
 <body class="mode-base">
@@ -331,25 +360,33 @@
 <div class="header">
   <div class="header-left">
     <div class="header-title">
-      <span class="cross">✝</span> 석담교회 말씀 이음
+      <span class="cross">✝</span> <span data-i18n="header_title">석담교회 말씀 이음</span>
     </div>
     <div class="status-pill">
       <span class="pill-dot" id="pillDot"></span>
-      <span id="pillText">연결 중...</span>
+      <span id="pillText" data-i18n="pill_connecting">연결 중...</span>
     </div>
   </div>
 
-  <button class="audio-btn" id="audioBtn" onclick="audioToggle()">
-    <span class="icon">🔇</span>
-    <span class="text">소리 켜기</span>
-  </button>
+  <div class="header-right">
+    <select id="uiLangSelect" onchange="changeUILang(this.value)" class="ui-lang-select">
+      <option value="ko">🇰🇷</option>
+      <option value="en">🇺🇸</option>
+      <option value="ne">🇳🇵</option>
+    </select>
+
+    <button class="audio-btn" id="audioBtn" onclick="audioToggle()">
+      <span class="icon">🔇</span>
+      <span class="text" data-i18n="audio_on_btn">소리 켜기</span>
+    </button>
+  </div>
 </div>
 
 <!-- 자막 영역 -->
 <div class="subtitle-area" id="subtitleArea">
   <div class="empty-state" id="emptyState">
     <span class="cross-big">✝</span>
-    예배가 시작되면<br>이곳에 자막이 표시됩니다
+    <span data-i18n="empty_msg">예배가 시작되면<br>이곳에 자막이 표시됩니다</span>
   </div>
 </div>
 
@@ -358,17 +395,17 @@
   
   <!-- 글자 크기 조절 (항상 노출) -->
   <div class="control-row">
-    <span class="row-label">글자 크기</span>
+    <span class="row-label" data-i18n="size_label">글자 크기</span>
     <div class="size-btns">
-      <button class="size-btn" id="btnBase"       onclick="setMode('base')">보통</button>
-      <button class="size-btn" id="btnLarge"      onclick="setMode('large')">크게</button>
-      <button class="size-btn" id="btnFullscreen" onclick="setMode('fullscreen')">화면 가득</button>
+      <button class="size-btn" id="btnBase"       onclick="setMode('base')" data-i18n="size_base">보통</button>
+      <button class="size-btn" id="btnLarge"      onclick="setMode('large')" data-i18n="size_large">크게</button>
+      <button class="size-btn" id="btnFullscreen" onclick="setMode('fullscreen')" data-i18n="size_fullscreen">화면 가득</button>
     </div>
   </div>
 
   <!-- 다국어 번역 (해당 예배에 번역이 있을 때만 노출) -->
   <div class="control-row" id="langRow" style="display: none;">
-    <span class="row-label">외국어 번역</span>
+    <span class="row-label" data-i18n="lang_row_label">외국어 번역</span>
     <div class="lang-chips" id="langChips">
       <!-- 칩이 동적으로 추가됩니다 -->
     </div>
@@ -377,19 +414,96 @@
 </div>
 
 <!-- 전체화면 모드에서 빠져나오는 버튼 -->
-<button class="exit-fullscreen-btn" onclick="setMode('large')">
+<button class="exit-fullscreen-btn" onclick="setMode('large')" data-i18n="exit_fullscreen">
   전체화면 닫기
 </button>
-
-<!-- 무음 오디오 (백그라운드 재생 유지용) -->
-<audio id="silentAudio" loop playsinline>
-  <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
-</audio>
 
 <!-- 토스트 -->
 <div class="toast" id="toast"></div>
 
 <script>
+// ── 다국어 사전 ──
+const i18n = {
+  ko: {
+    "header_title": "석담교회 말씀 이음",
+    "pill_connecting": "연결 중...",
+    "pill_connected": "연결됨",
+    "pill_receiving": "자막 수신 중",
+    "pill_error": "재연결 중...",
+    "pill_waiting": "대기 중",
+    "audio_on_btn": "소리 켜기",
+    "audio_off_btn": "소리 끄기",
+    "empty_msg": "예배가 시작되면<br>이곳에 자막이 표시됩니다",
+    "size_label": "글자 크기",
+    "size_base": "보통",
+    "size_large": "크게",
+    "size_fullscreen": "화면 가득",
+    "lang_row_label": "외국어 번역",
+    "exit_fullscreen": "전체화면 닫기",
+    "toast_audio_on": "소리가 켜졌습니다",
+    "toast_audio_off": "소리가 꺼졌습니다",
+    "toast_audio_error": "소리를 켤 수 없습니다",
+    "loading": "번역 중..."
+  },
+  en: {
+    "header_title": "Seokdam Church Sermon Ee-eum",
+    "pill_connecting": "Connecting...",
+    "pill_connected": "Connected",
+    "pill_receiving": "Receiving subtitles",
+    "pill_error": "Reconnecting...",
+    "pill_waiting": "Idle",
+    "audio_on_btn": "Turn sound on",
+    "audio_off_btn": "Turn sound off",
+    "empty_msg": "Subtitles will appear here<br>when the service starts",
+    "size_label": "Text Size",
+    "size_base": "Normal",
+    "size_large": "Large",
+    "size_fullscreen": "Full Screen",
+    "lang_row_label": "Translation",
+    "exit_fullscreen": "Exit Full Screen",
+    "toast_audio_on": "Sound turned on",
+    "toast_audio_off": "Sound turned off",
+    "toast_audio_error": "Cannot turn on sound",
+    "loading": "Translating..."
+  },
+  ne: {
+    "header_title": "सेकदम चर्च वचन इयुम",
+    "pill_connecting": "जडान गर्दै...",
+    "pill_connected": "जडान भयो",
+    "pill_receiving": "उपशीर्षकहरू प्राप्त गर्दै",
+    "pill_error": "पुन: जडान गर्दै...",
+    "pill_waiting": "प्रतीक्षा गर्दै",
+    "audio_on_btn": "आवाज खोल्नुहोस्",
+    "audio_off_btn": "आवाज बन्द गर्नुहोस्",
+    "empty_msg": "सेवा सुरु भएपछि<br>यहाँ उपशीर्षकहरू देखा पर्नेछ",
+    "size_label": "अक्षर साइज",
+    "size_base": "सामान्य",
+    "size_large": "ठूलो",
+    "size_fullscreen": "पूरा स्क्रिन",
+    "lang_row_label": "अनुवाद",
+    "exit_fullscreen": "पूरा स्क्रिन बन्द गर्नुहोस्",
+    "toast_audio_on": "आवाज खोलियो",
+    "toast_audio_off": "आवाज बन्द गरियो",
+    "toast_audio_error": "आवाज खोल्न सकिएन",
+    "loading": "अनुवाद गर्दै..."
+  }
+};
+
+let currentUILang = localStorage.getItem('uiLang') || 'ko';
+
+function changeUILang(lang) {
+  currentUILang = lang;
+  localStorage.setItem('uiLang', lang);
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n[lang] && i18n[lang][key]) {
+      el.innerHTML = i18n[lang][key];
+    }
+  });
+  document.getElementById('uiLangSelect').value = lang;
+  updateAudioBtn(); // Update text based on lang
+}
+
 // ── 상태 ──
 let sizeMode       = localStorage.getItem('sizeMode') || 'base';
 let segments       = [];
@@ -407,6 +521,7 @@ let checkedLanguages = new Set(JSON.parse(localStorage.getItem('checkedLangs') |
 
 // ── 초기화 ──
 window.addEventListener('load', async () => {
+  changeUILang(currentUILang);
   await loadConfig();
   applyMode(sizeMode);
   connect();
@@ -421,8 +536,8 @@ async function loadConfig() {
     MAX_SEGMENTS = cfg.max_segments;
   } catch (e) {
     LANGUAGES = {
-      en: { name: 'English', flag: '🇬🇧' },
-      ne: { name: '네पाली',  flag: '🇳🇵' },
+      en: { name: 'English', flag: '🇺🇸' },
+      ne: { name: 'नेपाली',  flag: '🇳🇵' },
     };
   }
 }
@@ -498,7 +613,7 @@ function connect() {
 
   ws.onopen = () => {
     reconnectDelay = 1000;
-    setPillState('running', '연결됨');
+    setPillState('running', i18n[currentUILang]["pill_connected"]);
   };
 
   ws.binaryType = 'arraybuffer';
@@ -512,14 +627,14 @@ function connect() {
   };
 
   ws.onclose = () => {
-    setPillState('error', '재연결 중...');
+    setPillState('error', i18n[currentUILang]["pill_error"]);
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);
     resetAudioBuffer();
     if (reconnectTimer) clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(connect, reconnectDelay);
   };
 
-  ws.onerror = () => { setPillState('error', '연결 오류'); };
+  ws.onerror = () => { setPillState('error', 'Error'); };
 }
 
 function handleMessage(data) {
@@ -535,14 +650,14 @@ function handleMessage(data) {
 
     case 'status':
       if (data.state === 'running') {
-        setPillState('running', '자막 수신 중');
+        setPillState('running', i18n[currentUILang]["pill_receiving"]);
         if (data.languages && data.languages.length > 0) {
           setActiveLanguages(data.languages);
         }
       } else if (data.state === 'connecting') {
-        setPillState('connecting', '연결 중...');
+        setPillState('connecting', i18n[currentUILang]["pill_connecting"]);
       } else {
-        setPillState('', '대기 중');
+        setPillState('', i18n[currentUILang]["pill_waiting"]);
         clearActiveLanguages();
         stopAudioPlayback();
       }
@@ -569,7 +684,7 @@ function handleMessage(data) {
   }
 }
 
-// ── 자막 렌더링 ──
+// ── 자막 렌더링 (최적화 버전) ──
 function renderSubtitles() {
   const area  = document.getElementById('subtitleArea');
   const empty = document.getElementById('emptyState');
@@ -580,14 +695,24 @@ function renderSubtitles() {
     return;
   }
   empty.style.display = 'none';
-  area.querySelectorAll('.segment').forEach(el => el.remove());
 
+  // 1. 사라진 세그먼트 제거
+  const segmentIds = new Set(segments.map(s => String(s.id)));
+  area.querySelectorAll('.segment').forEach(el => {
+    if (!segmentIds.has(el.dataset.id)) el.remove();
+  });
+
+  // 2. 세그먼트 업데이트 또는 추가
   segments.forEach(seg => {
-    const div = document.createElement('div');
-    div.className = 'segment';
+    let div = area.querySelector(`.segment[data-id="${seg.id}"]`);
+    if (!div) {
+      div = document.createElement('div');
+      div.className = 'segment';
+      div.dataset.id = seg.id;
+      area.appendChild(div);
+    }
 
     let html = `<div class="seg-ko">${escapeHtml(seg.ko)}</div>`;
-
     for (const code of activeLanguages) {
       if (!checkedLanguages.has(code)) continue;
       const cfg = LANGUAGES[code] || { flag: '', name: code };
@@ -597,8 +722,9 @@ function renderSubtitles() {
       }
     }
 
-    div.innerHTML = html;
-    area.appendChild(div);
+    if (div.innerHTML !== html) {
+      div.innerHTML = html;
+    }
   });
 
   area.scrollTop = area.scrollHeight;
@@ -634,6 +760,7 @@ let audioCtx        = null;
 let opusDecoder     = null;
 let audioEnabled    = false;
 let audioInited     = false;
+let isAudioLoading  = false;
 let workletNode     = null;
 
 const WORKLET_SRC = `
@@ -643,12 +770,13 @@ class PCMPlayerProcessor extends AudioWorkletProcessor {
     this.ring = [];
     this.current = null;
     this.offset = 0;
-    this.bufferLimit = 50;
+    this.bufferLimit = 25; // 60ms * 25 = 1.5s
     this.port.onmessage = (e) => {
       if (e.data.type === 'audio') {
         this.ring.push(e.data.pcm);
         if (this.ring.length > this.bufferLimit) {
-          this.ring.splice(0, this.ring.length - 12);
+          // 지연이 심하면 오래된 데이터 일부 삭제 (부드럽게 유지)
+          this.ring.splice(0, this.ring.length - 15);
         }
       } else if (e.data.type === 'clear') {
         this.ring = [];
@@ -685,7 +813,12 @@ registerProcessor('pcm-player', PCMPlayerProcessor);
 `;
 
 async function audioToggle() {
+  if (isAudioLoading) return;
+
   if (!audioInited) {
+    isAudioLoading = true;
+    updateAudioBtn();
+
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
       const blob = new Blob([WORKLET_SRC], { type: 'application/javascript' });
@@ -703,14 +836,16 @@ async function audioToggle() {
       audioInited = true;
       audioEnabled = true;
 
-      const silentAudio = document.getElementById('silentAudio');
-      silentAudio.play().catch(() => {});
+      // 배경 재생 유지는 AudioWorklet 연결만으로 충분 (문제있는 silentAudio 제거)
 
       updateAudioBtn();
-      showToast('소리가 켜졌습니다');
+      showToast(i18n[currentUILang]["toast_audio_on"]);
     } catch (e) {
-      showToast('소리를 켤 수 없습니다');
-      return;
+      console.error(e);
+      showToast(i18n[currentUILang]["toast_audio_error"]);
+    } finally {
+      isAudioLoading = false;
+      updateAudioBtn();
     }
   } else {
     audioEnabled = !audioEnabled;
@@ -718,7 +853,7 @@ async function audioToggle() {
       workletNode.port.postMessage({ type: 'clear' });
     }
     updateAudioBtn();
-    showToast(audioEnabled ? '소리가 켜졌습니다' : '소리가 꺼졌습니다');
+    showToast(audioEnabled ? i18n[currentUILang]["toast_audio_on"] : i18n[currentUILang]["toast_audio_off"]);
   }
 }
 
@@ -727,13 +862,21 @@ function updateAudioBtn() {
   const icon = btn.querySelector('.icon');
   const text = btn.querySelector('.text');
   
+  if (isAudioLoading) {
+    icon.textContent = '⏳';
+    text.textContent = i18n[currentUILang]["loading"] || '...';
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = false;
+
   if (audioEnabled) {
     icon.textContent = '🔊';
-    text.textContent = '소리 끄기';
+    text.textContent = i18n[currentUILang]["audio_off_btn"];
     btn.classList.add('active');
   } else {
     icon.textContent = '🔇';
-    text.textContent = '소리 켜기';
+    text.textContent = i18n[currentUILang]["audio_on_btn"];
     btn.classList.remove('active');
   }
 }
@@ -765,8 +908,10 @@ document.addEventListener('visibilitychange', () => {
 
 // ── 상태 pill ──
 function setPillState(state, text) {
-  document.getElementById('pillDot').className = `pill-dot ${state}`;
-  document.getElementById('pillText').textContent = text;
+  const dot = document.getElementById('pillDot');
+  const txt = document.getElementById('pillText');
+  if (dot) dot.className = `pill-dot ${state}`;
+  if (txt) txt.textContent = text;
 }
 
 // ── Wake Lock ──

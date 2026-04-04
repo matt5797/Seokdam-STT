@@ -82,7 +82,10 @@ service NestService {
 
 
 def ensure_proto_compiled():
-    """nest_pb2.py / nest_pb2_grpc.py 자동 컴파일"""
+    """nest_pb2.py / nest_pb2_grpc.py 자동 컴파일 (EXE 환경에서는 스킵)"""
+    if getattr(sys, "frozen", False):
+        return
+
     pb2_path = os.path.join(SCRIPT_DIR, "nest_pb2.py")
     pb2_grpc_path = os.path.join(SCRIPT_DIR, "nest_pb2_grpc.py")
 
@@ -737,12 +740,22 @@ class SubtitleSession:
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from connection_manager import ConnectionManager
 
 BASE_DIR = pathlib.Path(__file__).parent
+# assets 폴더 경로 (exe 실행 시와 일반 실행 시 모두 대응)
+ASSETS_DIR = BASE_DIR.parent / "assets"
+if not ASSETS_DIR.exists():
+    ASSETS_DIR = BASE_DIR / "assets"
+
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 app = FastAPI(title="석담교회 말씀 이음")
+
+# 정적 파일 서빙 (아이콘 등)
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
 
 manager = ConnectionManager()
 

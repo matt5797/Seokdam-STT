@@ -188,7 +188,7 @@ class TranslationResult:
 class GeminiTranslator:
     """Gemini API 비동기 번역기"""
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-flash-lite-latest"):
         self.model = model
 
         # API Key 설정: 인자 > 환경변수
@@ -228,7 +228,6 @@ class GeminiTranslator:
                     system_instruction=TRANSLATION_SYSTEM_PROMPT,
                     response_mime_type="application/json",
                     response_schema=TRANSLATION_SCHEMA,
-                    temperature=0.3,  # 번역은 일관성이 중요하므로 낮은 temperature
                     max_output_tokens=512,
                 ),
             )
@@ -532,8 +531,8 @@ def main():
         help="Gemini API Key (미지정 시 GEMINI_API_KEY 환경변수 사용)",
     )
     parser.add_argument(
-        "--gemini-model", default="gemini-2.0-flash",
-        help="Gemini 모델명 (기본: gemini-2.0-flash)",
+        "--gemini-model", default="gemini-flash-lite-latest",
+        help="Gemini 모델명 (기본: gemini-flash-lite-latest)",
     )
     args = parser.parse_args()
 

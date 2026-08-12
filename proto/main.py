@@ -31,6 +31,7 @@ if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 import config
+from version import APP_VERSION
 
 # ── opus.dll 경로 등록 (opuslib의 find_library가 찾을 수 있도록) ──
 _opus_dll_path = os.path.join(SCRIPT_DIR, "opus.dll")
@@ -316,7 +317,6 @@ class GeminiTranslator:
                     system_instruction=lang_cfg["system_prompt"],
                     response_mime_type="application/json",
                     response_schema=TRANSLATION_SCHEMA,
-                    temperature=0.3,
                     max_output_tokens=1024,  # refined_korean + translation 두 필드 충분히
                 ),
             )
@@ -763,6 +763,12 @@ manager = ConnectionManager()
 active_session: Optional[SubtitleSession] = None
 
 
+@app.get("/api/health")
+async def api_health():
+    """업데이터와 운영 점검에서 사용하는 가벼운 상태 확인."""
+    return JSONResponse({"status": "ok", "version": APP_VERSION})
+
+
 @app.middleware("http")
 async def admin_local_only(request: Request, call_next):
     """관리자 경로는 로컬호스트에서만 접근 허용"""
@@ -901,6 +907,13 @@ async def ws_admin(websocket: WebSocket):
                 model = msg.get("model", config.DEFAULT_GEMINI_MODEL)
                 mic_index = msg.get("mic_index", -1)
 
+                if model not in config.GEMINI_MODELS:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "지원하지 않는 Gemini 모델입니다.",
+                    })
+                    continue
+
                 manager.set_streaming_state(True, languages)
 
                 # 뷰어에게 새 세션 시작 알림 → 클라이언트 세그먼트 초기화
@@ -1011,7 +1024,7 @@ def main():
         print(f"  [!] API 키가 설정되지 않았습니다: {', '.join(missing)}")
         print()
         print("  .env 파일을 만들어 키를 입력하세요:")
-        print(f"    위치: {os.path.join(SCRIPT_DIR, '.env')}")
+        print(f"    위치: {config.ENV_PATH}")
         print()
         print("  .env 예시:")
         print('    CLOVA_SECRET=your_key_here')

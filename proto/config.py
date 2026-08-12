@@ -9,19 +9,19 @@ import os as _os
 import pathlib as _pathlib
 
 
+if getattr(_os.sys, "frozen", False):
+    APP_DIR = _pathlib.Path(_os.sys.executable).resolve().parent
+else:
+    APP_DIR = _pathlib.Path(__file__).resolve().parent
+ENV_PATH = APP_DIR / ".env"
+
+
 def _load_env():
     """exe 옆 또는 스크립트 옆 .env 파일을 읽어 환경변수로 등록"""
-    # PyInstaller exe → exe가 있는 폴더, 일반 실행 → 스크립트 폴더
-    if getattr(_os.sys, "frozen", False):
-        base = _pathlib.Path(_os.sys.executable).parent
-    else:
-        base = _pathlib.Path(__file__).parent
-
-    env_path = base / ".env"
-    if not env_path.exists():
+    if not ENV_PATH.exists():
         return
 
-    with open(env_path, encoding="utf-8") as f:
+    with open(ENV_PATH, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -70,11 +70,10 @@ CHURCH_KEYWORDS = f"{_CUSTOM},{_THEOLOGY},{_WORSHIP},{_PEOPLE},{_BIBLE_NAMES}"
 
 # ── Gemini 모델 옵션 ──────────────────────────
 GEMINI_MODELS = [
-    "gemini-2.0-flash",
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
 ]
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+DEFAULT_GEMINI_MODEL = "gemini-flash-lite-latest"
 
 # ── 번역 대상 언어 설정 ──────────────────────
 # 실시간 STT 특성(문장 끊김, 무의미한 감탄사 등)을 보정하는 지시문 추가

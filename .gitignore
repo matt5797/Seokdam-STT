@@ -11,6 +11,9 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+release/
+.update/
+/app-version.json
 downloads/
 eggs/
 .eggs/
@@ -31,6 +34,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+!Seokdam-Updater.spec
 
 # Installer logs
 pip-log.txt
@@ -182,3 +186,4 @@ cython_debug/
 
 config_secret.py
 .env
+proto/build_version.py

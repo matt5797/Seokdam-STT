@@ -86,5 +86,5 @@ church-subtitle/
 
 - **"마이크 감지 실패"**: sounddevice가 PortAudio를 찾을 수 없는 경우. Windows에서는 보통 자동 포함됨.
 - **"STT 설정 실패"**: CLOVA Secret Key가 잘못되었거나 만료된 경우.
-- **번역이 느린 경우**: `gemini-2.0-flash` 모델을 사용하세요. 네트워크 상태도 확인.
+- **번역이 느린 경우**: `gemini-flash-lite-latest` 모델을 사용하세요. 네트워크 상태도 확인.
 - **Proto 컴파일 실패**: `pip install grpcio-tools` 확인.

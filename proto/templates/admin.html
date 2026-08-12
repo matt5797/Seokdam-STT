@@ -973,7 +973,9 @@ function initModelSelect() {
   MODELS.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m;
-    opt.textContent = m;
+    opt.textContent = m === 'gemini-flash-lite-latest'
+      ? '빠름 · 저비용 (Flash-Lite 최신)'
+      : '균형 · 고성능 (Flash 최신)';
     if (m === DEFAULT_MODEL) opt.selected = true;
     sel.appendChild(opt);
   });

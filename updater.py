@@ -8,14 +8,17 @@ import os
 import pathlib
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
 import urllib.request
 import zipfile
 
+import certifi
 
-LAUNCHER_VERSION = "1.0.0"
+
+LAUNCHER_VERSION = "1.0.1"
 MANIFEST_URL = (
     "https://github.com/matt5797/Seokdam-STT/"
     "releases/latest/download/version.json"
@@ -35,6 +38,11 @@ def install_dir() -> pathlib.Path:
     if getattr(sys, "frozen", False):
         return pathlib.Path(sys.executable).resolve().parent
     return pathlib.Path(__file__).resolve().parent
+
+
+def ssl_context() -> ssl.SSLContext:
+    """Use the bundled CA bundle when the Windows trust store is incomplete."""
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def version_key(version: str) -> tuple[int, ...]:
@@ -60,7 +68,11 @@ def fetch_json(url: str) -> dict:
         url,
         headers={"User-Agent": f"Seokdam-Updater/{LAUNCHER_VERSION}"},
     )
-    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
+    with urllib.request.urlopen(
+        request,
+        timeout=HTTP_TIMEOUT_SECONDS,
+        context=ssl_context(),
+    ) as response:
         payload = response.read(MAX_MANIFEST_BYTES + 1)
     if len(payload) > MAX_MANIFEST_BYTES:
         raise UpdateError("업데이트 정보가 허용 크기를 초과했습니다.")
@@ -92,7 +104,11 @@ def download_file(url: str, destination: pathlib.Path, expected_sha256: str) -> 
         headers={"User-Agent": f"Seokdam-Updater/{LAUNCHER_VERSION}"},
     )
     digest = hashlib.sha256()
-    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
+    with urllib.request.urlopen(
+        request,
+        timeout=HTTP_TIMEOUT_SECONDS,
+        context=ssl_context(),
+    ) as response:
         with destination.open("wb") as output:
             while chunk := response.read(1024 * 1024):
                 output.write(chunk)

@@ -4,11 +4,20 @@ import pathlib
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 
 import updater
 
 
 class UpdaterTests(unittest.TestCase):
+    def test_ssl_context_uses_certifi_bundle(self):
+        with patch("updater.certifi.where", return_value="C:/certs/cacert.pem") as where:
+            with patch("updater.ssl.create_default_context") as create_context:
+                updater.ssl_context()
+
+        where.assert_called_once_with()
+        create_context.assert_called_once_with(cafile="C:/certs/cacert.pem")
+
     def test_version_key_compares_numeric_versions(self):
         self.assertGreater(updater.version_key("1.10.0"), updater.version_key("1.2.9"))
         self.assertEqual(updater.version_key("v2.0.0"), (2, 0, 0))

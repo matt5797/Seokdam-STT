@@ -1,10 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import certifi
+
 a = Analysis(
     ['updater.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[(certifi.where(), 'certifi')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
